@@ -1,0 +1,52 @@
+[
+  {
+    "id": "40000000-0000-4000-a000-000000000001",
+    "workspace_id": "10000000-0000-4000-a000-000000000001",
+    "name": "Production",
+    "description": "Video shoots, cameras, audio.",
+    "color_key": "blue",
+    "sort_order": 0,
+    "created_at": "2026-04-02T10:00:00.000Z",
+    "updated_at": "2026-04-02T10:00:00.000Z"
+  },
+  {
+    "id": "40000000-0000-4000-a000-000000000002",
+    "workspace_id": "10000000-0000-4000-a000-000000000001",
+    "name": "Design",
+    "description": "Graphics, motion, branding.",
+    "color_key": "purple",
+    "sort_order": 1,
+    "created_at": "2026-04-02T10:01:00.000Z",
+    "updated_at": "2026-04-02T10:01:00.000Z"
+  },
+  {
+    "id": "40000000-0000-4000-a000-000000000003",
+    "workspace_id": "10000000-0000-4000-a000-000000000001",
+    "name": "Events",
+    "description": "Live events and on-site coverage.",
+    "color_key": "green",
+    "sort_order": 2,
+    "created_at": "2026-04-02T10:02:00.000Z",
+    "updated_at": "2026-04-02T10:02:00.000Z"
+  },
+  {
+    "id": "40000000-0000-4000-a000-000000000011",
+    "workspace_id": "10000000-0000-4000-a000-000000000002",
+    "name": "Editorial",
+    "description": "Writing and proofing.",
+    "color_key": "orange",
+    "sort_order": 0,
+    "created_at": "2026-04-04T10:00:00.000Z",
+    "updated_at": "2026-04-04T10:00:00.000Z"
+  },
+  {
+    "id": "40000000-0000-4000-a000-000000000012",
+    "workspace_id": "10000000-0000-4000-a000-000000000002",
+    "name": "Field Ops",
+    "description": "On-location production.",
+    "color_key": "teal",
+    "sort_order": 1,
+    "created_at": "2026-04-04T10:01:00.000Z",
+    "updated_at": "2026-04-04T10:01:00.000Z"
+  }
+]

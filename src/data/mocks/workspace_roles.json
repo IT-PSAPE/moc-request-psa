@@ -1,0 +1,68 @@
+[
+  {
+    "id": "20000000-0000-4000-a000-000000000001",
+    "workspace_id": "10000000-0000-4000-a000-000000000001",
+    "name": "Admin",
+    "can_create": true,
+    "can_read": true,
+    "can_update": true,
+    "can_delete": true,
+    "can_manage_roles": true,
+    "is_system": true
+  },
+  {
+    "id": "20000000-0000-4000-a000-000000000002",
+    "workspace_id": "10000000-0000-4000-a000-000000000001",
+    "name": "Editor",
+    "can_create": true,
+    "can_read": true,
+    "can_update": true,
+    "can_delete": false,
+    "can_manage_roles": false,
+    "is_system": true
+  },
+  {
+    "id": "20000000-0000-4000-a000-000000000003",
+    "workspace_id": "10000000-0000-4000-a000-000000000001",
+    "name": "Viewer",
+    "can_create": false,
+    "can_read": true,
+    "can_update": false,
+    "can_delete": false,
+    "can_manage_roles": false,
+    "is_system": true
+  },
+  {
+    "id": "20000000-0000-4000-a000-000000000011",
+    "workspace_id": "10000000-0000-4000-a000-000000000002",
+    "name": "Admin",
+    "can_create": true,
+    "can_read": true,
+    "can_update": true,
+    "can_delete": true,
+    "can_manage_roles": true,
+    "is_system": true
+  },
+  {
+    "id": "20000000-0000-4000-a000-000000000012",
+    "workspace_id": "10000000-0000-4000-a000-000000000002",
+    "name": "Editor",
+    "can_create": true,
+    "can_read": true,
+    "can_update": true,
+    "can_delete": false,
+    "can_manage_roles": false,
+    "is_system": true
+  },
+  {
+    "id": "20000000-0000-4000-a000-000000000013",
+    "workspace_id": "10000000-0000-4000-a000-000000000002",
+    "name": "Viewer",
+    "can_create": false,
+    "can_read": true,
+    "can_update": false,
+    "can_delete": false,
+    "can_manage_roles": false,
+    "is_system": true
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "10000000-0000-4000-a000-000000000001",
+    "name": "Acme Studio",
+    "slug": "acme",
+    "description": "Sample multi-department production workspace.",
+    "created_by": "00000000-0000-4000-a000-000000000001",
+    "created_at": "2026-04-01T10:30:00.000Z",
+    "updated_at": "2026-04-01T10:30:00.000Z"
+  },
+  {
+    "id": "10000000-0000-4000-a000-000000000002",
+    "name": "Northwind Productions",
+    "slug": "northwind",
+    "description": "Second example workspace for testing multi-tenancy.",
+    "created_by": "00000000-0000-4000-a000-000000000001",
+    "created_at": "2026-04-01T10:35:00.000Z",
+    "updated_at": "2026-04-01T10:35:00.000Z"
+  }
+]
