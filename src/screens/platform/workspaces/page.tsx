@@ -6,7 +6,6 @@ import { Label, Paragraph } from '@/components/display/text'
 import { Spinner } from '@/components/feedback/spinner'
 import { EmptyState } from '@/components/feedback/empty-state'
 import { fetchAllWorkspaces } from '@/data/fetch-workspaces'
-import { ResetMockDataButton } from '@/features/platform/reset-mock-data-button'
 import { routes } from '@/screens/app-routes'
 import type { Workspace } from '@/types/workspaces'
 
@@ -42,12 +41,9 @@ export function PlatformWorkspacesScreen() {
                         Create new workspaces and assign their initial admin.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <ResetMockDataButton />
-                    <Button icon={<Plus />} onClick={() => navigate(`/${routes.platformCreateWorkspace}`)}>
-                        New workspace
-                    </Button>
-                </div>
+                <Button icon={<Plus />} onClick={() => navigate(`/${routes.platformCreateWorkspace}`)}>
+                    New workspace
+                </Button>
             </div>
 
             {workspaces.length === 0 ? (

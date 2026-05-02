@@ -6,6 +6,7 @@ import { Badge } from '@/components/display/badge'
 import { Label, Paragraph } from '@/components/display/text'
 import { Button } from '@/components/controls/button'
 import { Select } from '@/components/form/select'
+import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
 import {
@@ -37,11 +38,7 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
     const { toast } = useFeedback()
     const confirm = useConfirm()
     const [adding, setAdding] = useState(false)
-    const [candidateId, setCandidateId] = useState('')
-    const [candidateRole, setCandidateRole] = useState<DepartmentRole>('member')
-    const [busy, setBusy] = useState(false)
 
-    // Members of this department
     const inDept = members.filter(m => m.departments.some(d => d.id === department.id))
     const inDeptIds = new Set(inDept.map(m => m.profile.id))
     const candidates = activeMembers.filter(m => !inDeptIds.has(m.profile.id))
@@ -73,23 +70,6 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
         }
     }
 
-    async function handleAdd() {
-        if (!candidateId) return
-        setBusy(true)
-        try {
-            await addDepartmentMember(department.id, candidateId, candidateRole)
-            toast({ title: 'Member added to department', variant: 'success' })
-            setAdding(false)
-            setCandidateId('')
-            setCandidateRole('member')
-            await onChanged()
-        } catch (err) {
-            toast({ title: 'Add failed', description: getErrorMessage(err, 'Could not add.'), variant: 'error' })
-        } finally {
-            setBusy(false)
-        }
-    }
-
     return (
         <div className="space-y-3">
             <div className="flex items-end justify-between px-1">
@@ -107,35 +87,12 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
             </div>
 
             {adding && (
-                <div className="rounded-lg border border-secondary bg-primary p-3 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-                        <Select value={candidateId} onChange={e => setCandidateId(e.target.value)}>
-                            <option value="">Pick a workspace member…</option>
-                            {candidates.map(m => (
-                                <option key={m.profile.id} value={m.profile.id}>
-                                    {[m.profile.name, m.profile.surname].filter(Boolean).join(' ')} · {m.profile.email}
-                                </option>
-                            ))}
-                        </Select>
-                        <Select value={candidateRole} onChange={e => setCandidateRole(e.target.value as DepartmentRole)}>
-                            <option value="member">Member</option>
-                            <option value="lead">Lead</option>
-                        </Select>
-                    </div>
-                    <div className="flex gap-2 justify-end">
-                        <Button variant="ghost" icon={<X />} onClick={() => { setAdding(false); setCandidateId('') }} disabled={busy}>
-                            Cancel
-                        </Button>
-                        <Button icon={<Plus />} onClick={handleAdd} disabled={!candidateId || busy}>
-                            {busy ? 'Adding…' : 'Add to department'}
-                        </Button>
-                    </div>
-                    {candidates.length === 0 && (
-                        <Paragraph.xs className="text-quaternary">
-                            All active workspace members are already in this department.
-                        </Paragraph.xs>
-                    )}
-                </div>
+                <DepartmentMemberAddForm
+                    department={department}
+                    candidates={candidates}
+                    onCancel={() => setAdding(false)}
+                    onAdded={async () => { setAdding(false); await onChanged() }}
+                />
             )}
 
             {inDept.length === 0 ? (
@@ -143,37 +100,116 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
                     <Paragraph.sm className="text-tertiary">No one in this department yet.</Paragraph.sm>
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-lg border border-secondary bg-primary">
-                    <Table className="w-full">
-                        <Table.Head>
-                            <Table.Row>
-                                <Table.Header className="px-3 py-2 paragraph-xs">Person</Table.Header>
-                                <Table.Header className="px-3 py-2 paragraph-xs">Status</Table.Header>
-                                <Table.Header className="px-3 py-2 paragraph-xs">Workspace role</Table.Header>
-                                <Table.Header className="px-3 py-2 paragraph-xs">Department role</Table.Header>
-                                <Table.Header className="px-3 py-2 paragraph-xs text-right w-32">Action</Table.Header>
-                            </Table.Row>
-                        </Table.Head>
-                        <Table.Body>
-                            {inDept.map(member => {
-                                const initials = initialsOf(member.profile.name, member.profile.surname)
-                                return (
-                                    <DeptMemberRow
-                                        key={member.profile.id}
-                                        member={member}
-                                        department={department}
-                                        initials={initials}
-                                        roles={roles}
-                                        onRoleChange={handleRoleChange}
-                                        onRemove={handleRemove}
-                                        onChanged={onChanged}
-                                    />
-                                )
-                            })}
-                        </Table.Body>
-                    </Table>
-                </div>
+                <DepartmentMembersList
+                    department={department}
+                    members={inDept}
+                    roles={roles}
+                    onRoleChange={handleRoleChange}
+                    onRemove={handleRemove}
+                    onChanged={onChanged}
+                />
             )}
+        </div>
+    )
+}
+
+type AddFormProps = {
+    department: Department
+    candidates: ResolvedMember[]
+    onCancel: () => void
+    onAdded: () => Promise<void>
+}
+
+function DepartmentMemberAddForm({ department, candidates, onCancel, onAdded }: AddFormProps) {
+    const { toast } = useFeedback()
+    const [candidateId, setCandidateId] = useState('')
+    const [candidateRole, setCandidateRole] = useState<DepartmentRole>('member')
+    const [busy, setBusy] = useState(false)
+
+    async function handleAdd() {
+        if (!candidateId) return
+        setBusy(true)
+        try {
+            await addDepartmentMember(department.id, candidateId, candidateRole)
+            toast({ title: 'Member added to department', variant: 'success' })
+            await onAdded()
+        } catch (err) {
+            toast({ title: 'Add failed', description: getErrorMessage(err, 'Could not add.'), variant: 'error' })
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    return (
+        <div className="rounded-lg border border-secondary bg-primary p-3 space-y-3">
+            <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+                <Select value={candidateId} onChange={e => setCandidateId(e.target.value)}>
+                    <option value="">Pick a workspace member…</option>
+                    {candidates.map(m => (
+                        <option key={m.profile.id} value={m.profile.id}>
+                            {[m.profile.name, m.profile.surname].filter(Boolean).join(' ')} · {m.profile.email}
+                        </option>
+                    ))}
+                </Select>
+                <Select value={candidateRole} onChange={e => setCandidateRole(e.target.value as DepartmentRole)}>
+                    <option value="member">Member</option>
+                    <option value="lead">Lead</option>
+                </Select>
+            </div>
+            <div className="flex gap-2 justify-end">
+                <Button variant="ghost" icon={<X />} onClick={onCancel} disabled={busy}>
+                    Cancel
+                </Button>
+                <Button icon={<Plus />} onClick={handleAdd} disabled={!candidateId || busy}>
+                    {busy ? 'Adding…' : 'Add to department'}
+                </Button>
+            </div>
+            {candidates.length === 0 && (
+                <Paragraph.xs className="text-quaternary">
+                    All active workspace members are already in this department.
+                </Paragraph.xs>
+            )}
+        </div>
+    )
+}
+
+type ListProps = {
+    department: Department
+    members: ResolvedMember[]
+    roles: WorkspaceRole[]
+    onRoleChange: (member: ResolvedMember, role: DepartmentRole) => Promise<void>
+    onRemove: (member: ResolvedMember) => Promise<void>
+    onChanged: () => Promise<void>
+}
+
+function DepartmentMembersList({ department, members, roles, onRoleChange, onRemove, onChanged }: ListProps) {
+    return (
+        <div className="overflow-x-auto rounded-lg border border-secondary bg-primary">
+            <Table className="w-full">
+                <Table.Head>
+                    <Table.Row>
+                        <Table.Header className="px-3 py-2 paragraph-xs">Person</Table.Header>
+                        <Table.Header className="px-3 py-2 paragraph-xs">Status</Table.Header>
+                        <Table.Header className="px-3 py-2 paragraph-xs">Workspace role</Table.Header>
+                        <Table.Header className="px-3 py-2 paragraph-xs">Department role</Table.Header>
+                        <Table.Header className="px-3 py-2 paragraph-xs text-right w-32">Action</Table.Header>
+                    </Table.Row>
+                </Table.Head>
+                <Table.Body>
+                    {members.map(member => (
+                        <DeptMemberRow
+                            key={member.profile.id}
+                            member={member}
+                            department={department}
+                            initials={initialsOf(member.profile.name, member.profile.surname)}
+                            roles={roles}
+                            onRoleChange={onRoleChange}
+                            onRemove={onRemove}
+                            onChanged={onChanged}
+                        />
+                    ))}
+                </Table.Body>
+            </Table>
         </div>
     )
 }
@@ -223,15 +259,20 @@ function DeptMemberRow({ member, department, initials, roles, onRoleChange, onRe
                 )}
             </Table.Cell>
             <Table.Cell className="px-3 py-2">
-                <Select
-                    style="ghost"
-                    value={currentRole}
-                    onChange={e => handleRole(e.target.value as DepartmentRole)}
-                    className="!w-auto"
-                >
-                    <option value="member">Member</option>
-                    <option value="lead">Lead</option>
-                </Select>
+                <Dropdown.Root placement="bottom-start">
+                    <Dropdown.Trigger>
+                        <span className="inline-flex items-center gap-1 cursor-pointer paragraph-sm text-primary hover:text-brand">
+                            {currentRole === 'lead' ? 'Lead' : 'Member'}
+                        </span>
+                    </Dropdown.Trigger>
+                    <Dropdown.Panel>
+                        {(['member', 'lead'] as DepartmentRole[]).filter(r => r !== currentRole).map(r => (
+                            <Dropdown.Item key={r} onSelect={() => handleRole(r)}>
+                                {r === 'lead' ? 'Lead' : 'Member'}
+                            </Dropdown.Item>
+                        ))}
+                    </Dropdown.Panel>
+                </Dropdown.Root>
             </Table.Cell>
             <Table.Cell className="px-3 py-2 text-right">
                 <Button variant="danger-secondary" icon={<Trash2 />} onClick={() => onRemove(member)}>

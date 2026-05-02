@@ -13,8 +13,8 @@ const TABS = [
 ] as const
 
 export function SettingsLayout() {
-    const { profile } = useAuth()
-    const { role, loading } = useCurrentWorkspace()
+    const { state: { profile } } = useAuth()
+    const { state: { role, loading } } = useCurrentWorkspace()
     const { pathname } = useLocation()
     const navigate = useNavigate()
 

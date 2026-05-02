@@ -1,8 +1,8 @@
 import { mockStore } from './store/mock-store'
+import { getPassword, setPassword } from './mock-passwords'
 import { mapProfile, type ProfileRow } from './map-profile'
 import { mapWorkspaceMember, type WorkspaceMemberRow } from './map-workspace-member'
-import { passwordKey } from './store/storage-keys'
-import { setSession } from './store/session'
+import { setCurrentUserId } from './store/current-context'
 import type { Profile } from '@/types/profiles'
 import type { WorkspaceMember } from '@/types/workspaces'
 
@@ -59,16 +59,48 @@ export async function signupUser(input: SignupInput): Promise<SignupResult> {
     }
     membersStore.insert(memberRow)
 
-    if (typeof window !== 'undefined') {
-        window.localStorage.setItem(passwordKey(profileId), input.password)
-    }
-
-    setSession(profileId)
+    setPassword(profileId, input.password)
+    setCurrentUserId(profileId)
 
     return {
         profile: mapProfile(profileRow),
         workspaceMember: mapWorkspaceMember(memberRow),
     }
+}
+
+export type ProfilePatch = {
+    name?: string
+    surname?: string | null
+    email?: string
+}
+
+export async function updateProfile(id: string, patch: ProfilePatch): Promise<Profile> {
+    const profilesStore = mockStore<ProfileRow>('profiles')
+    const current = profilesStore.find(id)
+    if (!current) throw new Error('Profile not found')
+
+    const next: Partial<ProfileRow> = { updated_at: new Date().toISOString() }
+
+    if (patch.name !== undefined) {
+        const trimmed = patch.name.trim()
+        if (!trimmed) throw new Error('Name cannot be empty')
+        next.name = trimmed
+    }
+    if (patch.surname !== undefined) {
+        const trimmed = patch.surname?.trim() ?? ''
+        next.surname = trimmed || null
+    }
+    if (patch.email !== undefined) {
+        const normalizedEmail = patch.email.trim().toLowerCase()
+        if (!normalizedEmail) throw new Error('Email cannot be empty')
+        if (normalizedEmail !== current.email) {
+            const conflict = profilesStore.findOne(p => p.id !== id && p.email.toLowerCase() === normalizedEmail)
+            if (conflict) throw new Error('An account with that email already exists')
+        }
+        next.email = normalizedEmail
+    }
+
+    return mapProfile(profilesStore.update(id, next))
 }
 
 export async function signinUser(email: string, password: string): Promise<Profile> {
@@ -79,11 +111,7 @@ export async function signinUser(email: string, password: string): Promise<Profi
         throw new Error('Invalid email or password')
     }
 
-    if (typeof window === 'undefined') {
-        throw new Error('Cannot sign in outside the browser')
-    }
-
-    const stored = window.localStorage.getItem(passwordKey(row.id))
+    const stored = getPassword(row.id)
     if (stored !== password) {
         throw new Error('Invalid email or password')
     }
@@ -92,6 +120,6 @@ export async function signinUser(email: string, password: string): Promise<Profi
         throw new Error('This account has been suspended. Contact your administrator.')
     }
 
-    setSession(row.id)
+    setCurrentUserId(row.id)
     return mapProfile(row)
 }

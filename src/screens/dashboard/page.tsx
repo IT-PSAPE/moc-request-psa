@@ -8,8 +8,8 @@ import { Spinner } from '@/components/feedback/spinner'
 import { activeStatuses } from '@/types/requests'
 
 export function DashboardScreen() {
-    const { profile } = useAuth()
-    const { workspace, role } = useCurrentWorkspace()
+    const { state: { profile } } = useAuth()
+    const { state: { workspace, role } } = useCurrentWorkspace()
     const { state: deptState } = useDepartments()
     const { state, actions } = useRequests()
 

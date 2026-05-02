@@ -12,14 +12,14 @@ function LoadingShell() {
 }
 
 export function RequireAuth() {
-    const { session, loading } = useAuth()
+    const { state: { userId, loading } } = useAuth()
     if (loading) return <LoadingShell />
-    if (!session) return <Navigate to={`/${routes.login}`} replace />
+    if (!userId) return <Navigate to={`/${routes.login}`} replace />
     return <Outlet />
 }
 
 export function RequireActiveMembership() {
-    const { loading, activeMembership, profile } = useAuth()
+    const { state: { loading, activeMembership, profile } } = useAuth()
     if (loading) return <LoadingShell />
     if (!profile) return <Navigate to={`/${routes.login}`} replace />
     if (profile.isPlatformAdmin) return <Outlet />
@@ -30,9 +30,9 @@ export function RequireActiveMembership() {
 }
 
 export function RedirectIfAuth({ children }: { children: React.ReactNode }) {
-    const { session, loading, profile, activeMembership } = useAuth()
+    const { state: { userId, loading, profile, activeMembership } } = useAuth()
     if (loading) return <LoadingShell />
-    if (session) {
+    if (userId) {
         if (profile?.isPlatformAdmin) {
             return <Navigate to={`/${routes.dashboard}`} replace />
         }

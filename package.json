@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "playwright:cli": "node scripts/playwright-cli.mjs",
     "export:request-mocks": "node scripts/export-request-mocks.mjs",
     "normalize:mock-ids": "node scripts/normalize-mock-ids.mjs"
   },

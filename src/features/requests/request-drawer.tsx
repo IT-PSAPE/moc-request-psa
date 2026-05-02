@@ -6,7 +6,7 @@ import { Button } from '@/components/controls/button'
 import { Label, Paragraph } from '@/components/display/text'
 import { Spinner } from '@/components/feedback/spinner'
 import { fetchAssigneesForRequest } from '@/data/fetch-assignees'
-import { RequestMetaFields, RequestFiveW, RequestNotes, RequestAssigneeList } from './request-properties'
+import { RequestPropertiesView } from './request-properties-view'
 import type { Request, ResolvedAssignee } from '@/types/requests'
 
 type RequestDrawerProps = {
@@ -42,13 +42,13 @@ export function RequestDrawer({ request, onClose }: RequestDrawerProps) {
 
                 <Drawer.Content>
                     <div className="space-y-6 p-4">
-                        <RequestMetaFields request={request} />
-                        <RequestFiveW request={request} />
-                        <RequestNotes request={request} />
+                        <RequestPropertiesView.Meta request={request} />
+                        <RequestPropertiesView.FiveW request={request} />
+                        <RequestPropertiesView.Notes request={request} />
                         {assignees === null ? (
                             <div className="py-4 flex justify-center"><Spinner size="md" /></div>
                         ) : (
-                            <RequestAssigneeList assignees={assignees} />
+                            <RequestPropertiesView.Assignees assignees={assignees} />
                         )}
                     </div>
                 </Drawer.Content>

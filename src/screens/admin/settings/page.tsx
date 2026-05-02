@@ -11,7 +11,7 @@ import { updateWorkspace } from '@/data/mutate-workspaces'
 import { getErrorMessage } from '@/utils/get-error-message'
 
 export function AdminSettingsScreen() {
-    const { workspace, loading } = useCurrentWorkspace()
+    const { state: { workspace, loading } } = useCurrentWorkspace()
     const { toast } = useFeedback()
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')

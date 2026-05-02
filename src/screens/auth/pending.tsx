@@ -8,7 +8,7 @@ import { routes } from '@/screens/app-routes'
 import { AuthLayout } from './auth-layout'
 
 export function PendingScreen() {
-    const { profile, memberships, signOut } = useAuth()
+    const { state: { profile, memberships }, actions: { signOut } } = useAuth()
     const navigate = useNavigate()
 
     const pendingWorkspace = useMemo(() => {

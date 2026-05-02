@@ -8,14 +8,13 @@ import { Input } from '@/components/form/input'
 import { Select } from '@/components/form/select'
 import { FormLabel } from '@/components/form/form-label'
 import { fetchPublicWorkspaces } from '@/data/fetch-workspaces'
-import { ensureSeeded } from '@/data/store/reset'
 import { routes } from '@/screens/app-routes'
 import { AuthLayout } from './auth-layout'
 
 type WorkspaceOption = { id: string; name: string; slug: string }
 
 export function SignupScreen() {
-    const { signUp } = useAuth()
+    const { actions: { signUp } } = useAuth()
     const navigate = useNavigate()
 
     const [name, setName] = useState('')
@@ -29,7 +28,6 @@ export function SignupScreen() {
 
     useEffect(() => {
         let active = true
-        ensureSeeded()
         fetchPublicWorkspaces().then(list => {
             if (!active) return
             setWorkspaces(list)

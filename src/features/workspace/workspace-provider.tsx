@@ -16,7 +16,7 @@ type WorkspaceContextValue = {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-    const { activeMembership } = useAuth()
+    const { state: { activeMembership } } = useAuth()
     const [workspace, setWorkspace] = useState<Workspace | null>(null)
     const [role, setRole] = useState<WorkspaceRole | null>(null)
     const [loading, setLoading] = useState(true)
@@ -60,8 +60,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return <WorkspaceContext value={value}>{children}</WorkspaceContext>
 }
 
-export function useCurrentWorkspace(): WorkspaceContextValue['state'] {
+export function useCurrentWorkspace(): WorkspaceContextValue {
     const ctx = useContext(WorkspaceContext)
     if (!ctx) throw new Error('useCurrentWorkspace must be used within a WorkspaceProvider')
-    return ctx.state
+    return ctx
 }

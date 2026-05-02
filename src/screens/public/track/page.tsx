@@ -6,7 +6,6 @@ import { Badge } from '@/components/display/badge'
 import { Label, Paragraph } from '@/components/display/text'
 import { MetaRow } from '@/components/display/meta-row'
 import { Button } from '@/components/controls/button'
-import { ensureSeeded } from '@/data/store/reset'
 import { fetchRequestByTrackingId, type PublicTrackedRequest } from '@/data/fetch-request-by-tracking-id'
 import { PublicLayout } from '@/features/public-submit/public-layout'
 import { badgeColor } from '@/lib/color-keys'
@@ -24,7 +23,6 @@ export function PublicTrackScreen() {
             queueMicrotask(() => { if (active) setLoading(false) })
             return () => { active = false }
         }
-        ensureSeeded()
         fetchRequestByTrackingId(trackingId).then(result => {
             if (!active) return
             setTracked(result)

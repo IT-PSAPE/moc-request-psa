@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Select } from '@/components/form/select'
+import { Badge } from '@/components/display/badge'
+import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
 import { setMemberStatus } from '@/data/mutate-workspace-members'
@@ -12,6 +13,15 @@ const STATUS_LABELS: Record<MemberStatus, string> = {
     active: 'Active',
     rejected: 'Rejected',
     suspended: 'Suspended',
+}
+
+type BadgeColor = 'green' | 'yellow' | 'red' | 'gray'
+
+const STATUS_COLORS: Record<MemberStatus, BadgeColor> = {
+    active: 'green',
+    pending: 'yellow',
+    rejected: 'red',
+    suspended: 'gray',
 }
 
 const STATUS_ORDER: MemberStatus[] = ['pending', 'active', 'rejected', 'suspended']
@@ -51,7 +61,7 @@ export function MemberStatusSelect({ membershipId, profile, status, roles, onCha
     const [busy, setBusy] = useState(false)
 
     async function handleChange(next: MemberStatus) {
-        if (next === status) return
+        if (next === status || busy) return
 
         const copy = TRANSITION_COPY[next]
         if (copy) {
@@ -77,16 +87,19 @@ export function MemberStatusSelect({ membershipId, profile, status, roles, onCha
     }
 
     return (
-        <Select
-            style="ghost"
-            value={status}
-            onChange={e => handleChange(e.target.value as MemberStatus)}
-            disabled={busy}
-            className="!w-auto min-w-28"
-        >
-            {STATUS_ORDER.map(s => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-            ))}
-        </Select>
+        <Dropdown.Root placement="bottom-start">
+            <Dropdown.Trigger>
+                <span className="inline-flex items-center gap-1 cursor-pointer">
+                    <Badge label={STATUS_LABELS[status]} color={STATUS_COLORS[status]} />
+                </span>
+            </Dropdown.Trigger>
+            <Dropdown.Panel>
+                {STATUS_ORDER.filter(s => s !== status).map(s => (
+                    <Dropdown.Item key={s} aria-disabled={busy} className={busy ? 'pointer-events-none opacity-60' : undefined} onSelect={() => handleChange(s)}>
+                        <Badge label={STATUS_LABELS[s]} color={STATUS_COLORS[s]} />
+                    </Dropdown.Item>
+                ))}
+            </Dropdown.Panel>
+        </Dropdown.Root>
     )
 }

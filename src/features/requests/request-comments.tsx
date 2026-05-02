@@ -18,7 +18,7 @@ type RequestCommentsProps = {
 }
 
 export function RequestComments({ requestId }: RequestCommentsProps) {
-    const { profile } = useAuth()
+    const { state: { profile } } = useAuth()
     const { toast } = useFeedback()
     const confirm = useConfirm()
     const { comments, loading, post, remove } = useRequestComments(requestId)

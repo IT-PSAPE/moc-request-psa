@@ -42,18 +42,28 @@ function TabsRoot({ children, defaultTab, value: controlledValue, onValueChange,
 
 function TabsList({ children, className }: HTMLAttributes<HTMLDivElement>) {
     const { orientation } = useTabContext()
+
+    if (orientation === 'vertical') {
+        return (
+            <div
+                role="tablist"
+                aria-orientation="vertical"
+                className={cn('flex flex-col gap-1', className)}
+            >
+                {children}
+            </div>
+        )
+    }
+
     return (
-        <div
-            role="tablist"
-            aria-orientation={orientation}
-            className={cn(
-                orientation === 'vertical'
-                    ? 'flex flex-col gap-1'
-                    : 'flex gap-3 px-3 border-b border-tertiary',
-                className,
-            )}
-        >
-            {children}
+        <div className={cn('overflow-x-auto scrollbar-hidden border-b border-tertiary', className)}>
+            <div
+                role="tablist"
+                aria-orientation="horizontal"
+                className="flex gap-3 px-3 min-w-max"
+            >
+                {children}
+            </div>
         </div>
     )
 }
@@ -92,7 +102,7 @@ function TabsTab({ children, className, value }: HTMLAttributes<HTMLDivElement> 
             aria-selected={current}
             tabIndex={0}
             className={cn(
-                'py-1.5 border-b-2 cursor-pointer paragraph-sm',
+                'py-1.5 border-b-2 cursor-pointer paragraph-sm whitespace-nowrap shrink-0',
                 current ? 'border-brand' : 'border-transparent',
                 className,
             )}

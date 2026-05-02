@@ -6,8 +6,13 @@ import { PendingScreen } from '@/screens/auth/pending'
 import { DashboardScreen } from '@/screens/dashboard/page'
 import { DepartmentScreen } from '@/screens/departments/page'
 import { RequestDetailScreen } from '@/screens/requests/detail/page'
+import { ProfileScreen } from '@/screens/profile/page'
 import { PublicSubmitScreen } from '@/screens/public/submit/page'
+import { PublicSubmitSuccessScreen } from '@/screens/public/submit/success'
 import { PublicTrackScreen } from '@/screens/public/track/page'
+import { PublicPrivacyScreen } from '@/screens/public/legal/privacy'
+import { PublicTermsScreen } from '@/screens/public/legal/terms'
+import { PublicSupportScreen } from '@/screens/public/support/page'
 import { SettingsLayout, SettingsIndex } from '@/screens/settings/settings-layout'
 import { AdminMembersScreen } from '@/screens/admin/members/page'
 import { AdminDepartmentsScreen } from '@/screens/admin/departments/page'
@@ -47,7 +52,11 @@ function AppShellLayout() {
 const router = createBrowserRouter([
     // Public — no auth, no AppShell
     { path: routes.submit, element: <PublicSubmitScreen /> },
+    { path: routes.submitSuccess, element: <PublicSubmitSuccessScreen /> },
     { path: routes.track, element: <PublicTrackScreen /> },
+    { path: routes.privacy, element: <PublicPrivacyScreen /> },
+    { path: routes.terms, element: <PublicTermsScreen /> },
+    { path: routes.support, element: <PublicSupportScreen /> },
 
     // Auth
     { path: routes.login, element: <RedirectIfAuth><LoginScreen /></RedirectIfAuth> },
@@ -67,6 +76,7 @@ const router = createBrowserRouter([
                             { path: routes.dashboard, element: <DashboardScreen /> },
                             { path: routes.department, element: <DepartmentScreen /> },
                             { path: routes.requestDetail, element: <RequestDetailScreen /> },
+                            { path: routes.profile, element: <ProfileScreen /> },
                             {
                                 element: <SettingsLayout />,
                                 children: [

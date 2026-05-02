@@ -2,10 +2,10 @@ import { Plus, Save } from 'lucide-react'
 import { Button } from '@/components/controls/button'
 import { Table } from '@/components/display/table'
 import { Input } from '@/components/form/input'
-import { Select } from '@/components/form/select'
 import { Checkbox } from '@/components/form/checkbox'
 import { Indicator } from '@/components/display/indicator'
 import { Paragraph } from '@/components/display/text'
+import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { badgeColor } from '@/lib/color-keys'
 import { getErrorMessage } from '@/utils/get-error-message'
@@ -95,27 +95,41 @@ export function CategoriesTable({ categories, departments, onSaved }: Categories
                                         />
                                     </Table.Cell>
                                     <Table.Cell className="px-2 py-1.5">
-                                        <Select
-                                            style="ghost"
-                                            value={row.defaultDepartmentId ?? ''}
-                                            onChange={e => actions.updateField(row.id, { defaultDepartmentId: e.target.value || null })}
-                                        >
-                                            <option value="">— Unrouted —</option>
-                                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                        </Select>
+                                        <Dropdown.Root placement="bottom-start">
+                                            <Dropdown.Trigger>
+                                                <span className="inline-flex items-center gap-1 cursor-pointer paragraph-sm text-primary hover:text-brand">
+                                                    {departments.find(d => d.id === row.defaultDepartmentId)?.name ?? '— Unrouted —'}
+                                                </span>
+                                            </Dropdown.Trigger>
+                                            <Dropdown.Panel>
+                                                <Dropdown.Item onSelect={() => actions.updateField(row.id, { defaultDepartmentId: null })}>
+                                                    — Unrouted —
+                                                </Dropdown.Item>
+                                                {departments.map(d => (
+                                                    <Dropdown.Item key={d.id} onSelect={() => actions.updateField(row.id, { defaultDepartmentId: d.id })}>
+                                                        {d.name}
+                                                    </Dropdown.Item>
+                                                ))}
+                                            </Dropdown.Panel>
+                                        </Dropdown.Root>
                                     </Table.Cell>
                                     <Table.Cell className="px-2 py-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <Indicator color={badgeColor(row.colorKey)} className="size-5 shrink-0" />
-                                            <Select
-                                                style="ghost"
-                                                value={row.colorKey}
-                                                onChange={e => actions.updateField(row.id, { colorKey: e.target.value })}
-                                                className="!w-auto"
-                                            >
-                                                {COLOR_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </Select>
-                                        </div>
+                                        <Dropdown.Root placement="bottom-start">
+                                            <Dropdown.Trigger>
+                                                <span className="inline-flex items-center gap-2 cursor-pointer hover:text-brand">
+                                                    <Indicator color={badgeColor(row.colorKey)} className="size-4 shrink-0" />
+                                                    <span className="paragraph-sm text-primary capitalize">{row.colorKey}</span>
+                                                </span>
+                                            </Dropdown.Trigger>
+                                            <Dropdown.Panel>
+                                                {COLOR_OPTIONS.map(c => (
+                                                    <Dropdown.Item key={c} onSelect={() => actions.updateField(row.id, { colorKey: c })}>
+                                                        <Indicator color={badgeColor(c)} className="size-4 shrink-0" />
+                                                        <span className="capitalize">{c}</span>
+                                                    </Dropdown.Item>
+                                                ))}
+                                            </Dropdown.Panel>
+                                        </Dropdown.Root>
                                     </Table.Cell>
                                     <Table.Cell className="px-2 py-1.5 text-center">
                                         <Checkbox

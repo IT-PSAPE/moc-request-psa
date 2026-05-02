@@ -1,4 +1,3 @@
-import { getSession } from './session'
 import { mockStore } from './mock-store'
 import { mapWorkspaceRole, type WorkspaceRoleRow } from '@/data/map-workspace-role'
 import type { ProfileRow } from '@/data/map-profile'
@@ -16,14 +15,18 @@ export type CurrentContext = {
 }
 
 let activeWorkspaceIdOverride: string | null = null
+let currentUserId: string | null = null
+
+export function setCurrentUserId(userId: string | null): void {
+    currentUserId = userId
+}
 
 export function setActiveWorkspaceId(workspaceId: string | null): void {
     activeWorkspaceIdOverride = workspaceId
 }
 
 export function getCurrentContext(): CurrentContext {
-    const session = getSession()
-    if (!session) {
+    if (!currentUserId) {
         return {
             userId: null,
             isPlatformAdmin: false,
@@ -34,10 +37,10 @@ export function getCurrentContext(): CurrentContext {
         }
     }
 
-    const profile = mockStore<ProfileRow>('profiles').find(session.userId)
+    const profile = mockStore<ProfileRow>('profiles').find(currentUserId)
     if (!profile) {
         return {
-            userId: session.userId,
+            userId: currentUserId,
             isPlatformAdmin: false,
             activeWorkspaceId: null,
             workspaceRole: null,
@@ -47,7 +50,7 @@ export function getCurrentContext(): CurrentContext {
     }
 
     const memberships = mockStore<WorkspaceMemberRow>('workspace_members').where(
-        row => row.user_id === session.userId,
+        row => row.user_id === currentUserId,
     )
 
     const activeMemberships = memberships.filter(row => row.status === 'active')
@@ -63,7 +66,7 @@ export function getCurrentContext(): CurrentContext {
 
     const departmentIds = candidate
         ? mockStore<DepartmentMemberRow>('department_members')
-              .where(row => row.user_id === session.userId)
+              .where(row => row.user_id === currentUserId)
               .map(row => row.department_id)
         : []
 

@@ -1,29 +1,32 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ensureSeeded } from '@/data/store/reset'
-import { clearSession, getSession, subscribeSession, type MockSession } from '@/data/store/session'
 import { fetchProfileById, fetchProfileByEmail } from '@/data/fetch-profile'
 import { fetchWorkspaceMembershipsForUser } from '@/data/fetch-workspaces'
 import { signinUser, signupUser, type SignupInput } from '@/data/mutate-profile'
+import { setCurrentUserId } from '@/data/store/current-context'
 import type { Profile } from '@/types/profiles'
 import type { WorkspaceMember } from '@/types/workspaces'
 
 type SignInResult = { error: Error | null }
 type SignUpResult = { error: Error | null }
 
-type AuthState = {
-    session: MockSession | null
-    profile: Profile | null
-    memberships: WorkspaceMember[]
-    activeMembership: WorkspaceMember | null
-    loading: boolean
-    signIn: (email: string, password: string) => Promise<SignInResult>
-    signUp: (input: SignupInput) => Promise<SignUpResult>
-    signOut: () => Promise<{ error: Error | null }>
-    refresh: () => Promise<void>
+type AuthContextValue = {
+    state: {
+        userId: string | null
+        profile: Profile | null
+        memberships: WorkspaceMember[]
+        activeMembership: WorkspaceMember | null
+        loading: boolean
+    }
+    actions: {
+        signIn: (email: string, password: string) => Promise<SignInResult>
+        signUp: (input: SignupInput) => Promise<SignUpResult>
+        signOut: () => Promise<{ error: Error | null }>
+        refresh: () => Promise<void>
+    }
 }
 
-const AuthContext = createContext<AuthState | null>(null)
+const AuthContext = createContext<AuthContextValue | null>(null)
 
 async function loadProfileAndMemberships(userId: string): Promise<{
     profile: Profile | null
@@ -37,58 +40,26 @@ async function loadProfileAndMemberships(userId: string): Promise<{
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [session, setSessionState] = useState<MockSession | null>(null)
+    const [userId, setUserId] = useState<string | null>(null)
     const [profile, setProfile] = useState<Profile | null>(null)
     const [memberships, setMemberships] = useState<WorkspaceMember[]>([])
-    const [loading, setLoading] = useState(true)
 
     const refresh = useCallback(async () => {
-        const current = getSession()
-        setSessionState(current)
-        if (!current) {
+        if (!userId) {
             setProfile(null)
             setMemberships([])
             return
         }
-        const result = await loadProfileAndMemberships(current.userId)
+        const result = await loadProfileAndMemberships(userId)
         setProfile(result.profile)
         setMemberships(result.memberships)
-    }, [])
-
-    useEffect(() => {
-        let active = true
-
-        async function init() {
-            ensureSeeded()
-            await refresh()
-            if (active) setLoading(false)
-        }
-
-        init()
-
-        const unsub = subscribeSession(async (next) => {
-            if (!active) return
-            setSessionState(next)
-            if (!next) {
-                setProfile(null)
-                setMemberships([])
-                return
-            }
-            const result = await loadProfileAndMemberships(next.userId)
-            if (!active) return
-            setProfile(result.profile)
-            setMemberships(result.memberships)
-        })
-
-        return () => {
-            active = false
-            unsub()
-        }
-    }, [refresh])
+    }, [userId])
 
     const signIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
         try {
             const next = await signinUser(email, password)
+            setCurrentUserId(next.id)
+            setUserId(next.id)
             setProfile(next)
             const ms = await fetchWorkspaceMembershipsForUser(next.id)
             setMemberships(ms)
@@ -103,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const existing = await fetchProfileByEmail(input.email)
             if (existing) return { error: new Error('An account with that email already exists') }
             const result = await signupUser(input)
+            setCurrentUserId(result.profile.id)
+            setUserId(result.profile.id)
             setProfile(result.profile)
             setMemberships([result.workspaceMember])
             return { error: null }
@@ -112,7 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const signOut = useCallback(async () => {
-        clearSession()
+        setCurrentUserId(null)
+        setUserId(null)
         setProfile(null)
         setMemberships([])
         return { error: null }
@@ -121,23 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const activeMembership = useMemo<WorkspaceMember | null>(() => {
         return memberships.find(m => m.status === 'active') ?? memberships[0] ?? null
     }, [memberships])
+    const loading = false
 
-    const value = useMemo<AuthState>(() => ({
-        session,
-        profile,
-        memberships,
-        activeMembership,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        refresh,
-    }), [session, profile, memberships, activeMembership, loading, signIn, signUp, signOut, refresh])
+    const value = useMemo<AuthContextValue>(() => ({
+        state: { userId, profile, memberships, activeMembership, loading },
+        actions: { signIn, signUp, signOut, refresh },
+    }), [userId, profile, memberships, activeMembership, loading, signIn, signUp, signOut, refresh])
 
     return <AuthContext value={value}>{children}</AuthContext>
 }
 
-export function useAuth(): AuthState {
+export function useAuth(): AuthContextValue {
     const ctx = useContext(AuthContext)
     if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
     return ctx

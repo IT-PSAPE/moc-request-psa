@@ -104,16 +104,18 @@ export function SubmissionForm({ state, onChange }: SubmissionFormProps) {
 
             <div className="space-y-3 pt-2">
                 <h3 className="label-md">5 Ws and 1 H</h3>
-                {(['who', 'what', 'when', 'where', 'why', 'how'] as const).map(key => (
-                    <div key={key} className="space-y-1">
-                        <FormLabel label={key.charAt(0).toUpperCase() + key.slice(1)} />
-                        <Input
-                            placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)}…`}
-                            value={state[key]}
-                            onChange={e => onChange(key, e.target.value)}
-                        />
-                    </div>
-                ))}
+                <div className="grid gap-3 md:grid-cols-2">
+                    {(['who', 'what', 'when', 'where', 'why', 'how'] as const).map(key => (
+                        <div key={key} className="space-y-1">
+                            <FormLabel label={key.charAt(0).toUpperCase() + key.slice(1)} required={key === 'what'} />
+                            <Input
+                                placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)}…`}
+                                value={state[key]}
+                                onChange={e => onChange(key, e.target.value)}
+                            />
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     )

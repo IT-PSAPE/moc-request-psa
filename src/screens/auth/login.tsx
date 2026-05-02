@@ -10,7 +10,7 @@ import { routes } from '@/screens/app-routes'
 import { AuthLayout } from './auth-layout'
 
 export function LoginScreen() {
-    const { signIn } = useAuth()
+    const { actions: { signIn } } = useAuth()
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')

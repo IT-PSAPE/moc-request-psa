@@ -18,7 +18,7 @@ type DepartmentContextValue = {
 const DepartmentContext = createContext<DepartmentContextValue | null>(null)
 
 export function DepartmentProvider({ children }: { children: ReactNode }) {
-    const { workspace } = useCurrentWorkspace()
+    const { state: { workspace } } = useCurrentWorkspace()
     const [userDepartments, setUserDepartments] = useState<Department[]>([])
     const [allDepartments, setAllDepartments] = useState<Department[]>([])
     const [loading, setLoading] = useState(true)

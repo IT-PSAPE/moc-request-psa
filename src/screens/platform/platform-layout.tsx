@@ -4,7 +4,7 @@ import { Spinner } from '@/components/feedback/spinner'
 import { routes } from '@/screens/app-routes'
 
 export function PlatformLayout() {
-    const { profile, loading } = useAuth()
+    const { state: { profile, loading } } = useAuth()
 
     if (loading) {
         return (

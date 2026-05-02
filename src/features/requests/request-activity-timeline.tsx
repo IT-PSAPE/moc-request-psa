@@ -1,9 +1,28 @@
+import { Archive, CircleAlert, CircleCheck, GitPullRequestArrow, Loader, MessageSquare, Tag, Trash2, UserPlus, UserMinus } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Avatar } from '@/components/display/avatar'
 import { Label, Paragraph } from '@/components/display/text'
 import { Spinner } from '@/components/feedback/spinner'
 import { formatUtcIsoInBrowserTimeZone } from '@/utils/browser-date-time'
 import { useRequestActivity } from './use-request-activity'
 import { formatActivity } from './format-activity'
+import type { ActivityAction } from '@/types/activity'
+
+function ActionIcon({ action }: { action: ActivityAction }): ReactNode {
+    const cls = 'size-3.5 text-quaternary'
+    switch (action) {
+        case 'created': return <CircleCheck className={cls} />
+        case 'status_changed': return <Loader className={cls} />
+        case 'priority_changed': return <CircleAlert className={cls} />
+        case 'category_changed': return <Tag className={cls} />
+        case 'department_routed': return <GitPullRequestArrow className={cls} />
+        case 'assignee_added': return <UserPlus className={cls} />
+        case 'assignee_removed': return <UserMinus className={cls} />
+        case 'comment_posted': return <MessageSquare className={cls} />
+        case 'field_updated': return <Archive className={cls} />
+        default: return <Trash2 className={cls} />
+    }
+}
 
 type RequestActivityTimelineProps = {
     requestId: string
@@ -20,27 +39,49 @@ export function RequestActivityTimeline({ requestId }: RequestActivityTimelinePr
             ) : entries.length === 0 ? (
                 <Paragraph.sm className="text-quaternary">No activity yet.</Paragraph.sm>
             ) : (
-                <ol className="space-y-3 border-l border-secondary pl-4">
-                    {entries.map(entry => (
-                        <li key={entry.id} className="relative">
-                            <span className="absolute -left-[21px] top-1 size-2.5 rounded-full bg-secondary border border-primary" />
-                            <div className="flex items-start gap-2">
-                                {entry.actorInitials ? (
-                                    <Avatar.initials size="sm" name={entry.actorInitials} />
-                                ) : (
-                                    <span className="size-6 rounded-full bg-secondary grid place-items-center text-xs text-quaternary">
-                                        ?
+                <ol className="space-y-0">
+                    {entries.map((entry, index) => {
+                        const sentence = formatActivity(entry)
+                        const actorName = entry.actorName ?? 'Anonymous'
+                        const actionText = sentence.startsWith(actorName)
+                            ? sentence.slice(actorName.length).trimStart()
+                            : sentence
+
+                        const isLast = index === entries.length - 1
+
+                        return (
+                            <li key={entry.id} className="relative flex gap-3 last:pb-0">
+                                {/* Icon column with stem */}
+                                <div className="flex flex-col items-center shrink-0" style={{ width: 20 }}>
+                                    <span className="size-5 rounded-full bg-primary border border-secondary flex items-center justify-center z-10 shrink-0">
+                                        <ActionIcon action={entry.action as ActivityAction} />
                                     </span>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <Paragraph.sm className="text-secondary">{formatActivity(entry)}</Paragraph.sm>
-                                    <Paragraph.xs className="text-quaternary">
-                                        {formatUtcIsoInBrowserTimeZone(entry.createdAt)}
-                                    </Paragraph.xs>
+                                    {!isLast && (
+                                        <div className="w-[2px] flex-1 bg-border-secondary my-1" />
+                                    )}
                                 </div>
-                            </div>
-                        </li>
-                    ))}
+                                {/* Content */}
+                                <div className="flex items-start gap-2 min-w-0 pb-5">
+                                    {entry.actorInitials ? (
+                                        <Avatar.initials size="xs" name={entry.actorInitials} className="shrink-0" />
+                                    ) : (
+                                        <span className="shrink-0 size-5 rounded-full bg-secondary grid place-items-center">
+                                            <span className="paragraph-xs text-quaternary">?</span>
+                                        </span>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-baseline gap-1.5 flex-wrap">
+                                            <span className="label-sm text-primary">{actorName}</span>
+                                            <Paragraph.sm className="text-tertiary">{actionText}</Paragraph.sm>
+                                        </div>
+                                        <span className="paragraph-xs text-quaternary mt-0.5 block">
+                                            {formatUtcIsoInBrowserTimeZone(entry.createdAt)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </li>
+                        )
+                    })}
                 </ol>
             )}
         </div>

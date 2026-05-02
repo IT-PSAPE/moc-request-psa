@@ -4,7 +4,6 @@ import { Badge } from '@/components/display/badge'
 import { Avatar } from '@/components/display/avatar'
 import { Label, Paragraph } from '@/components/display/text'
 import { Button } from '@/components/controls/button'
-import { Select } from '@/components/form/select'
 import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
@@ -106,14 +105,20 @@ export function AllMembersTable({ members, roles, onChanged }: AllMembersTablePr
                                 </Table.Cell>
                                 <Table.Cell className="px-3 py-2">
                                     {member.membership.status === 'active' ? (
-                                        <Select
-                                            style="ghost"
-                                            value={member.role?.id ?? ''}
-                                            onChange={e => handleRoleChange(member, e.target.value)}
-                                            className="!w-auto min-w-32"
-                                        >
-                                            {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                                        </Select>
+                                        <Dropdown.Root placement="bottom-start">
+                                            <Dropdown.Trigger>
+                                                <span className="inline-flex items-center gap-1 cursor-pointer paragraph-sm text-primary hover:text-brand">
+                                                    {member.role?.name ?? '—'}
+                                                </span>
+                                            </Dropdown.Trigger>
+                                            <Dropdown.Panel>
+                                                {roles.map(r => (
+                                                    <Dropdown.Item key={r.id} onSelect={() => handleRoleChange(member, r.id)}>
+                                                        {r.name}
+                                                    </Dropdown.Item>
+                                                ))}
+                                            </Dropdown.Panel>
+                                        </Dropdown.Root>
                                     ) : (
                                         <Paragraph.xs className="text-quaternary">—</Paragraph.xs>
                                     )}

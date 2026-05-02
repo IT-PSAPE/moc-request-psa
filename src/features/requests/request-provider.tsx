@@ -31,7 +31,7 @@ function mergeRequests(previous: Record<string, Request>, requests: Request[]) {
 }
 
 export function RequestsProvider({ children }: { children: ReactNode }) {
-    const { workspace } = useCurrentWorkspace()
+    const { state: { workspace } } = useCurrentWorkspace()
     const [requestsById, setRequestsById] = useState<Record<string, Request>>({})
     const [isLoadingActive, setIsLoadingActive] = useState(false)
     const [isLoadingArchived, setIsLoadingArchived] = useState(false)

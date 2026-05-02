@@ -13,7 +13,7 @@ import type { WorkspaceRole } from '@/types/workspaces'
 const ALL_TAB = 'all'
 
 export function AdminMembersScreen() {
-    const { workspace } = useCurrentWorkspace()
+    const { state: { workspace } } = useCurrentWorkspace()
     const { state: deptState, actions: deptActions } = useDepartments()
     const [members, setMembers] = useState<ResolvedMember[]>([])
     const [roles, setRoles] = useState<WorkspaceRole[]>([])

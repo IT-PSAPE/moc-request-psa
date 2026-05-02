@@ -16,5 +16,23 @@
     "created_by": "00000000-0000-4000-a000-000000000001",
     "created_at": "2026-04-01T10:35:00.000Z",
     "updated_at": "2026-04-01T10:35:00.000Z"
+  },
+  {
+    "id": "10000000-0000-4000-b000-000000000001",
+    "name": "Lighthouse Media",
+    "slug": "lighthouse-media",
+    "description": "Community media team with lean staffing and a growing intake queue.",
+    "created_by": "00000000-0000-4000-a000-000000000001",
+    "created_at": "2026-01-03T12:00:00.000Z",
+    "updated_at": "2026-01-03T12:00:00.000Z"
+  },
+  {
+    "id": "10000000-0000-4000-b000-000000000002",
+    "name": "Summit Weekly",
+    "slug": "summit-weekly",
+    "description": "Intentionally sparse workspace to preserve empty-state scenarios.",
+    "created_by": "00000000-0000-4000-a000-000000000001",
+    "created_at": "2026-01-04T12:00:00.000Z",
+    "updated_at": "2026-01-04T12:00:00.000Z"
   }
 ]

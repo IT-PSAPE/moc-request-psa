@@ -53,9 +53,10 @@ type DropdownRootProps = {
     onOpenChange?: (nextOpen: boolean) => void
     open?: boolean
     placement?: Placement
+    className?: string
 }
 
-function DropdownRoot({ children, closeOnEscape = true, defaultOpen = false, onOpenChange, open, placement = 'bottom' }: DropdownRootProps) {
+function DropdownRoot({ children, closeOnEscape = true, defaultOpen = false, onOpenChange, open, placement = 'bottom', className }: DropdownRootProps) {
     const isControlled = open !== undefined
     const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
     const [activeIndex, setActiveIndex] = useState(-1)
@@ -174,7 +175,7 @@ function DropdownRoot({ children, closeOnEscape = true, defaultOpen = false, onO
 
     return (
         <DropdownContext.Provider value={value}>
-            <span className="relative inline-flex">{children}</span>
+            <span className={cn("relative inline-flex", className)}>{children}</span>
         </DropdownContext.Provider>
     )
 }
@@ -332,7 +333,7 @@ function DropdownItem({ children, className, onClick, onSelect, ...props }: Drop
         <div
             aria-selected={isActive}
             className={cn(
-                'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-sm text-secondary',
+                'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-sm text-secondary min-h-9',
                 isActive && 'bg-secondary text-primary',
                 className,
             )}

@@ -18,6 +18,7 @@ export const routes = {
     dashboard: 'dashboard',
     department: 'departments/:departmentId',
     requestDetail: 'requests/:id',
+    profile: 'profile',
 
     // Settings (workspace_role.can_manage_roles)
     settings: 'settings',

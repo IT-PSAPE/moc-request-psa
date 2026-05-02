@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, useDroppable, useDraggable, useSensor, useSensors, closestCenter, type DragStartEvent, type DragEndEvent } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Card } from '@/components/display/card'
+import { Drawer } from '@/components/overlays/drawer'
 import { Indicator } from '@/components/display/indicator'
 import { Label } from '@/components/display/text'
 import { useFeedback } from '@/components/feedback/feedback-provider'
@@ -11,7 +12,8 @@ import type { Request } from '@/types/requests'
 import { useRequests } from './request-provider'
 import { updateRequestStatus } from '@/data/mutate-requests'
 import { getErrorMessage } from '@/utils/get-error-message'
-import { RequestItem } from './request-item'
+import { RequestDrawer } from './request-drawer'
+import { RequestItemStack } from './request-item'
 
 function DraggableRequestItem({ request }: { request: Request }) {
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -21,24 +23,27 @@ function DraggableRequestItem({ request }: { request: Request }) {
         disabled: drawerOpen,
     })
 
-    const handleDrawerOpenChange = useCallback((open: boolean) => setDrawerOpen(open), [])
-
     const style = {
         transform: isDragging ? undefined : CSS.Translate.toString(transform),
     }
 
     return (
-        <div ref={setNodeRef} style={style} {...(drawerOpen ? {} : { ...listeners, ...attributes })}>
-            {isDragging ? (
-                <div className="rounded-lg border-2 border-dashed border-secondary">
-                    <div className="invisible">
-                        <RequestItem request={request} vertical />
+        <Drawer.Root open={drawerOpen} onOpenChange={setDrawerOpen}>
+            <div ref={setNodeRef} style={style} {...(drawerOpen ? {} : { ...listeners, ...attributes })}>
+                {isDragging ? (
+                    <div className="rounded-lg border-2 border-dashed border-secondary">
+                        <div className="invisible">
+                            <RequestItemStack request={request} />
+                        </div>
                     </div>
-                </div>
-            ) : (
-                <RequestItem request={request} vertical onDrawerOpenChange={handleDrawerOpenChange} />
-            )}
-        </div>
+                ) : (
+                    <Drawer.Trigger>
+                        <RequestItemStack request={request} />
+                    </Drawer.Trigger>
+                )}
+            </div>
+            <RequestDrawer request={request} onClose={() => setDrawerOpen(false)} />
+        </Drawer.Root>
     )
 }
 
@@ -86,7 +91,6 @@ export function RequestKanban({ requests }: { requests: Request[] }) {
         const targetGroup = statusGroups.find(g => g.key === over.id)
         if (!targetGroup) return
 
-        // No-op if request already in this group
         if (targetGroup.statuses.includes(request.status)) return
 
         const previousStatus = request.status
@@ -117,7 +121,7 @@ export function RequestKanban({ requests }: { requests: Request[] }) {
             <DragOverlay>
                 {activeRequest && (
                     <div className="opacity-90 rotate-2 scale-105">
-                        <RequestItem request={activeRequest} vertical />
+                        <RequestItemStack request={activeRequest} />
                     </div>
                 )}
             </DragOverlay>
