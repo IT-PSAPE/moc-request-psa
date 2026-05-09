@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Spinner } from '@/components/feedback/spinner'
 import { Tabs } from '@/components/layout/tabs'
 import { fetchWorkspaceMembers, type ResolvedMember } from '@/data/fetch-workspace-members'
-import { mockStore } from '@/data/store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { mapWorkspaceRole, type WorkspaceRoleRow } from '@/data/map-workspace-role'
 import { useCurrentWorkspace } from '@/features/workspace/workspace-provider'
 import { useDepartments } from '@/features/departments/department-provider'
@@ -32,10 +32,13 @@ export function AdminMembersScreen() {
             await refresh()
             if (!active) return
             if (workspace) {
-                const wsRoles = mockStore<WorkspaceRoleRow>('workspace_roles')
-                    .where(r => r.workspace_id === workspace.id)
-                    .map(mapWorkspaceRole)
-                if (active) setRoles(wsRoles)
+                const { data, error } = await supabase
+                    .from('workspace_roles')
+                    .select('*')
+                    .eq('workspace_id', workspace.id)
+                if (!active) return
+                if (error) throw new Error(error.message)
+                setRoles((data ?? []).map(r => mapWorkspaceRole(r as WorkspaceRoleRow)))
             }
             if (active) setLoading(false)
         })()

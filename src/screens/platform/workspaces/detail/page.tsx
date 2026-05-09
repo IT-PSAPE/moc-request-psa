@@ -11,8 +11,8 @@ import { Select } from '@/components/form/select'
 import { FormLabel } from '@/components/form/form-label'
 import { Spinner } from '@/components/feedback/spinner'
 import { useFeedback } from '@/components/feedback/feedback-provider'
+import { supabase } from '@/lib/supabase'
 import { fetchWorkspaceById } from '@/data/fetch-workspaces'
-import { mockStore } from '@/data/store/mock-store'
 import { mapProfile, type ProfileRow } from '@/data/map-profile'
 import { mapWorkspaceMember, type WorkspaceMemberRow } from '@/data/map-workspace-member'
 import { mapWorkspaceRole, type WorkspaceRoleRow } from '@/data/map-workspace-role'
@@ -22,39 +22,53 @@ import { routes } from '@/screens/app-routes'
 import type { Workspace, WorkspaceMember, WorkspaceRole } from '@/types/workspaces'
 import type { Profile } from '@/types/profiles'
 
+type ResolvedWorkspaceMember = {
+    membership: WorkspaceMember
+    profile: Profile
+    role: WorkspaceRole | null
+}
+
 type WorkspaceContext = {
     workspace: Workspace
-    members: { membership: WorkspaceMember; profile: Profile; role: WorkspaceRole | null }[]
+    members: ResolvedWorkspaceMember[]
     candidates: Profile[]
+}
+
+type MemberJoin = WorkspaceMemberRow & {
+    profile: ProfileRow | null
+    role: WorkspaceRoleRow | null
 }
 
 async function loadContext(workspaceId: string): Promise<WorkspaceContext | null> {
     const workspace = await fetchWorkspaceById(workspaceId)
     if (!workspace) return null
 
-    const profilesById = new Map(mockStore<ProfileRow>('profiles').list().map(p => [p.id, p]))
-    const rolesById = new Map(mockStore<WorkspaceRoleRow>('workspace_roles').list().map(r => [r.id, r]))
-    const memberRows = mockStore<WorkspaceMemberRow>('workspace_members')
-        .where(m => m.workspace_id === workspaceId)
+    const { data: memberData, error: memberError } = await supabase
+        .from('workspace_members')
+        .select('*, profile:profiles!workspace_members_user_id_fkey(*), role:workspace_roles(*)')
+        .eq('workspace_id', workspaceId)
+    if (memberError) throw new Error(memberError.message)
+    const memberRows = (memberData ?? []) as unknown as MemberJoin[]
 
-    const members = memberRows
-        .map(m => {
-            const profile = profilesById.get(m.user_id)
-            if (!profile) return null
-            const role = m.workspace_role_id ? rolesById.get(m.workspace_role_id) ?? null : null
-            return {
-                membership: mapWorkspaceMember(m),
-                profile: mapProfile(profile),
-                role: role ? mapWorkspaceRole(role) : null,
-            }
-        })
-        .filter((m): m is { membership: WorkspaceMember; profile: Profile; role: WorkspaceRole | null } => m !== null)
+    const members: ResolvedWorkspaceMember[] = memberRows
+        .filter(m => m.profile !== null)
+        .map(m => ({
+            membership: mapWorkspaceMember(m),
+            profile: mapProfile(m.profile as ProfileRow),
+            role: m.role ? mapWorkspaceRole(m.role) : null,
+        }))
 
-    const memberUserIds = new Set(memberRows.map(m => m.user_id))
-    const candidates = Array.from(profilesById.values())
-        .filter(p => !memberUserIds.has(p.id) && p.status !== 'suspended')
-        .map(mapProfile)
-        .sort((a, b) => a.name.localeCompare(b.name))
+    const memberUserIds = new Set(members.map(m => m.profile.id))
+    const { data: candidateData, error: candidateError } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('status', 'suspended')
+        .order('name', { ascending: true })
+    if (candidateError) throw new Error(candidateError.message)
+
+    const candidates = (candidateData ?? [])
+        .map(p => mapProfile(p as ProfileRow))
+        .filter(p => !memberUserIds.has(p.id))
 
     return { workspace, members, candidates }
 }
@@ -189,7 +203,7 @@ export function PlatformWorkspaceDetailScreen() {
     )
 }
 
-function MemberCard({ member }: { member: { membership: WorkspaceMember; profile: Profile; role: WorkspaceRole | null } }) {
+function MemberCard({ member }: { member: ResolvedWorkspaceMember }) {
     const initials = `${member.profile.name[0] ?? ''}${member.profile.surname?.[0] ?? ''}`.trim() || member.profile.name[0] || '?'
     return (
         <div className="flex items-center gap-3 rounded-lg border border-secondary bg-primary p-3">

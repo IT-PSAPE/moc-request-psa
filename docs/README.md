@@ -4,29 +4,36 @@ This folder is the source of truth for the MOC Request app.
 
 ## Index
 
-- **[login-credentials.md](./login-credentials.md)** — every seeded mock user, their email + password, workspace + role + department assignments. Use this to log in during local development.
 - **[overview.md](./overview.md)** — high-level product description and how each feature surface fits together.
 - **[schema.md](./schema.md)** — the canonical data model: tables, columns, enums, foreign keys.
-- **[mock-layer.md](./mock-layer.md)** — how the localStorage-backed mock store works in Phase 1, and the per-file checklist for swapping to Supabase in Phase 2.
-- **[phases/](./phases/)** — Phase 2 SQL migrations. 13 ordered files that recreate the schema in Postgres with RLS, RPCs, and seed data.
+- **[phases/](./phases/)** — ordered Supabase SQL migrations that build the schema, RLS, RPCs, auth trigger, and realtime publication. Run them once against a fresh Supabase project.
 
-## Phase 1 (current) vs Phase 2
+## How the app talks to the backend
 
-| Phase | Storage | Status |
-| --- | --- | --- |
-| **Phase 1** | localStorage mock store | **Live** — what runs today |
-| **Phase 2** | Supabase (Postgres + Auth + RLS) | Blueprinted in `docs/phases/`; not yet wired |
+`src/data/*` are thin wrappers around `@supabase/supabase-js`. Every mutation is a direct `supabase.from(table).insert/update/delete` (or an RPC for the public submit / track flows), and every fetch is a `supabase.from(table).select(...)` honouring the RLS policies in [`docs/phases/phase-09-rls-policies.sql`](./phases/phase-09-rls-policies.sql). Auth is `supabase.auth` — sessions persist in localStorage automatically.
 
-The Phase 1 data layer (`src/data/`) mimics Supabase row shapes exactly so the swap to Phase 2 is a per-file change with no impact on components.
+`src/data/store/current-context.ts` carries two ambient values that mutations need synchronously: the signed-in `userId` (set by `AuthProvider` from the auth state listener) and the `activeWorkspaceId` (set by `WorkspaceProvider` when the active workspace resolves). Everything else is enforced by Postgres / RLS.
 
 ## Quick start
 
 1. `bun install`
-2. `bun run dev`
-3. Open http://localhost:5173 — log in with any credential from [login-credentials.md](./login-credentials.md)
-4. To submit a request as an external user, visit `/submit` (no login needed)
-5. To track a request anonymously, visit `/track/<tracking-id>` (e.g. `/track/Q7K3P9XR`)
+2. Copy `.env.example` to `.env.local` and fill in `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` from your Supabase project's API settings.
+3. Make sure all phases in [`docs/phases/`](./phases/) have been applied to your Supabase project (in numbered order).
+4. `bun run dev`
+5. Open the local URL and sign up via `/signup` — Supabase Auth creates the user, the `handle_new_user` trigger creates the matching `profiles` row, and the form drops you into a pending workspace membership awaiting admin approval.
+6. To submit a request as an external user, visit `/submit/<workspace-slug>` (e.g. `/submit/acme`) — no login needed, slug is required.
+7. To track a request anonymously, visit `/track/<tracking-id>`.
 
-## Resetting local data
+## Bootstrap (the very first user on a fresh project)
 
-`/platform/workspaces` (visible only to platform admins) has a **Reset mock data** button that wipes localStorage and re-seeds from the JSON files in `src/data/mocks/`.
+1. Apply the phases. `phase-11-seed-data.sql` creates the initial `Acme Studio` workspace + its three system roles. No users exist yet.
+2. Sign up the first user via `/signup`. The auth trigger creates their `profiles` row.
+3. In the Supabase dashboard SQL editor, mark them as a platform admin:
+   ```sql
+   update public.profiles set is_platform_admin = true where email = 'you@example.com';
+   ```
+4. Sign back in. The `Platform admin` link appears in the account menu. From `/platform/workspaces` you can assign workspace admins to existing users; those admins then create departments, categories, and approve sign-ups from `/admin/...`.
+
+## Resetting
+
+For a clean slate run [`docs/phases/nuke-everything.sql`](./phases/nuke-everything.sql), then re-run phases 01 → 14.

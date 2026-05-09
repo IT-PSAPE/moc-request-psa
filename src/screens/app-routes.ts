@@ -1,6 +1,6 @@
 export const routes = {
     // Public
-    submit: 'submit',
+    submit: 'submit/:workspaceSlug',
     submitSuccess: 'submit/success',
     track: 'track/:trackingId',
     privacy: 'legal/privacy',
@@ -9,7 +9,7 @@ export const routes = {
 
     // Auth
     login: 'login',
-    signup: 'signup',
+    signup: 'signup/:workspaceSlug',
     resetPassword: 'reset-password',
     passwordRecovery: 'password-recovery',
     pending: 'pending',

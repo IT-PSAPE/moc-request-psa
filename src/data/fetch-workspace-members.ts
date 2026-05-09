@@ -1,4 +1,4 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { getCurrentContext } from './store/current-context'
 import { mapWorkspaceMember, type WorkspaceMemberRow } from './map-workspace-member'
 import { mapProfile, type ProfileRow } from './map-profile'
@@ -22,44 +22,52 @@ export type ResolvedMember = {
     departmentMemberships: DepartmentMembership[]
 }
 
+type MemberJoinRow = WorkspaceMemberRow & {
+    profile: ProfileRow | null
+    role: WorkspaceRoleRow | null
+    department_members:
+        | (DepartmentMemberRow & { department: DepartmentRow | null })[]
+        | null
+}
+
 export async function fetchWorkspaceMembers(): Promise<ResolvedMember[]> {
     const ctx = getCurrentContext()
     if (!ctx.activeWorkspaceId) return []
 
-    const memberRows = mockStore<WorkspaceMemberRow>('workspace_members')
-        .where(row => row.workspace_id === ctx.activeWorkspaceId)
+    const { data, error } = await supabase
+        .from('workspace_members')
+        .select(`
+            *,
+            profile:profiles!workspace_members_user_id_fkey(*),
+            role:workspace_roles(*),
+            department_members!department_members_user_id_fkey(
+                *,
+                department:departments(*)
+            )
+        `)
+        .eq('workspace_id', ctx.activeWorkspaceId)
+    if (error) throw new Error(error.message)
 
-    if (memberRows.length === 0) return []
-
-    const profilesById = new Map(mockStore<ProfileRow>('profiles').list().map(p => [p.id, p]))
-    const rolesById = new Map(mockStore<WorkspaceRoleRow>('workspace_roles').list().map(r => [r.id, r]))
-    const departmentsById = new Map(mockStore<DepartmentRow>('departments').list().map(d => [d.id, d]))
-    const departmentMembers = mockStore<DepartmentMemberRow>('department_members').list()
-
-    return memberRows
+    const rows = (data ?? []) as unknown as MemberJoinRow[]
+    return rows
         .map(row => {
-            const profileRow = profilesById.get(row.user_id)
-            if (!profileRow) return null
-
-            const userDeptRows = departmentMembers.filter(dm => dm.user_id === row.user_id)
+            if (!row.profile) return null
             const departmentMemberships: DepartmentMembership[] = []
-            for (const dm of userDeptRows) {
-                const deptRow = departmentsById.get(dm.department_id)
-                if (!deptRow || deptRow.workspace_id !== row.workspace_id) continue
-                departmentMemberships.push({ department: mapDepartment(deptRow), role: dm.role })
+            for (const dm of row.department_members ?? []) {
+                if (!dm.department) continue
+                if (dm.department.workspace_id !== row.workspace_id) continue
+                departmentMemberships.push({ department: mapDepartment(dm.department), role: dm.role })
             }
-
             return {
                 membership: mapWorkspaceMember(row),
-                profile: mapProfile(profileRow),
-                role: row.workspace_role_id ? mapWorkspaceRole(rolesById.get(row.workspace_role_id)!) : null,
+                profile: mapProfile(row.profile),
+                role: row.role ? mapWorkspaceRole(row.role) : null,
                 departments: departmentMemberships.map(dm => dm.department),
                 departmentMemberships,
             }
         })
         .filter((entry): entry is ResolvedMember => entry !== null)
         .sort((a, b) => {
-            // pending first, then alphabetical by name
             const aPending = a.membership.status === 'pending' ? 0 : 1
             const bPending = b.membership.status === 'pending' ? 0 : 1
             if (aPending !== bPending) return aPending - bPending
@@ -68,7 +76,10 @@ export async function fetchWorkspaceMembers(): Promise<ResolvedMember[]> {
 }
 
 export async function fetchDepartmentMembershipsForUser(userId: string): Promise<DepartmentMember[]> {
-    return mockStore<DepartmentMemberRow>('department_members')
-        .where(row => row.user_id === userId)
-        .map(mapDepartmentMember)
+    const { data, error } = await supabase
+        .from('department_members')
+        .select('*')
+        .eq('user_id', userId)
+    if (error) throw new Error(error.message)
+    return (data ?? []).map(row => mapDepartmentMember(row as DepartmentMemberRow))
 }

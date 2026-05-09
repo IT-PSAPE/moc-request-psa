@@ -1,30 +1,29 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/controls/button'
 import { Select } from '@/components/form/select'
 import { FormLabel } from '@/components/form/form-label'
 import { Spinner } from '@/components/feedback/spinner'
-import { fetchPublicWorkspaces } from '@/data/fetch-workspaces'
+import { fetchWorkspaceBySlug } from '@/data/fetch-workspaces'
 import { fetchPublicCategories } from '@/data/fetch-categories'
 import { submitPublicRequest } from '@/data/submit-public-request'
 import { getErrorMessage } from '@/utils/get-error-message'
 import { PublicLayout } from '@/features/public-submit/public-layout'
 import { SubmissionForm, initialFormState, type SubmissionFormState } from '@/features/public-submit/submission-form'
-import { routes } from '@/screens/app-routes'
-import type { Workspace } from '@/types/workspaces'
 import type { Category } from '@/types/categories'
 
 type Step = 'select' | 'form'
 
-type WorkspaceOption = Pick<Workspace, 'id' | 'name' | 'slug'>
+type ResolvedWorkspace = { id: string; name: string; slug: string; description: string | null }
 
 export function PublicSubmitScreen() {
     const navigate = useNavigate()
+    const { workspaceSlug } = useParams<{ workspaceSlug: string }>()
+    const [resolving, setResolving] = useState(true)
+    const [workspace, setWorkspace] = useState<ResolvedWorkspace | null>(null)
     const [step, setStep] = useState<Step>('select')
-    const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([])
-    const [workspaceId, setWorkspaceId] = useState('')
     const [categories, setCategories] = useState<Category[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(false)
     const [categoryId, setCategoryId] = useState('')
@@ -34,30 +33,30 @@ export function PublicSubmitScreen() {
 
     useEffect(() => {
         let active = true
-        fetchPublicWorkspaces().then(list => {
+        if (!workspaceSlug) {
+            setResolving(false)
+            return () => { active = false }
+        }
+        fetchWorkspaceBySlug(workspaceSlug).then(ws => {
             if (!active) return
-            setWorkspaces(list)
-            setWorkspaceId(prev => prev || list[0]?.id || '')
+            setWorkspace(ws)
+            setResolving(false)
         })
         return () => { active = false }
-    }, [])
+    }, [workspaceSlug])
 
     useEffect(() => {
-        if (!workspaceId) {
-            setCategories([])
-            setCategoryId('')
-            return
-        }
+        if (!workspace) return
         let active = true
         setCategoriesLoading(true)
         setCategoryId('')
-        fetchPublicCategories(workspaceId).then(list => {
+        fetchPublicCategories(workspace.id).then(list => {
             if (!active) return
             setCategories(list)
             setCategoriesLoading(false)
         })
         return () => { active = false }
-    }, [workspaceId])
+    }, [workspace])
 
     function handleStateChange<K extends keyof SubmissionFormState>(field: K, value: SubmissionFormState[K]) {
         setForm(prev => ({ ...prev, [field]: value }))
@@ -65,13 +64,14 @@ export function PublicSubmitScreen() {
 
     function handleSelectContinue(e: FormEvent) {
         e.preventDefault()
-        if (!workspaceId || !categoryId) return
+        if (!categoryId) return
         setStep('form')
     }
 
     async function handleSubmit(e: FormEvent) {
         e.preventDefault()
         setError('')
+        if (!workspace) return
 
         if (!form.title.trim()) return setError('Please give your request a title.')
         if (!form.requestedByName.trim()) return setError('Please tell us your name.')
@@ -79,9 +79,8 @@ export function PublicSubmitScreen() {
 
         setSubmitting(true)
         try {
-            const ws = workspaces.find(w => w.id === workspaceId)
             const submission = await submitPublicRequest({
-                workspaceId,
+                workspaceId: workspace.id,
                 categoryId,
                 title: form.title,
                 requestedByName: form.requestedByName,
@@ -95,9 +94,13 @@ export function PublicSubmitScreen() {
                 why: form.why,
                 how: form.how,
             })
-            navigate(`/${routes.submitSuccess}`, {
+            navigate('/submit/success', {
                 replace: true,
-                state: { trackingId: submission.trackingId, workspaceName: ws?.name ?? 'the team' },
+                state: {
+                    trackingId: submission.trackingId,
+                    workspaceName: workspace.name,
+                    workspaceSlug: workspace.slug,
+                },
             })
         } catch (err) {
             setError(getErrorMessage(err, 'Submission failed.'))
@@ -106,7 +109,7 @@ export function PublicSubmitScreen() {
         }
     }
 
-    if (workspaces.length === 0) {
+    if (resolving) {
         return (
             <PublicLayout title="Submit a request">
                 <div className="flex justify-center py-8"><Spinner size="lg" /></div>
@@ -114,43 +117,46 @@ export function PublicSubmitScreen() {
         )
     }
 
-    if (step === 'select') {
-        const canContinue = Boolean(workspaceId && categoryId && !categoriesLoading)
+    if (!workspace) {
         return (
             <PublicLayout
-                eyebrow="Step 1 of 2"
-                title="Submit a request"
-                subtitle="Pick the team this is for, and what it's about."
+                title="Workspace not found"
+                subtitle="The submission link you followed doesn't match a known workspace."
+            >
+                <p className="paragraph-sm text-tertiary">
+                    Double-check the link your team shared with you, or get in touch with them for the correct URL.
+                </p>
+            </PublicLayout>
+        )
+    }
+
+    if (step === 'select') {
+        const canContinue = Boolean(categoryId && !categoriesLoading)
+        return (
+            <PublicLayout
+                eyebrow={`Submitting to ${workspace.name}`}
+                title="What's this request about?"
+                subtitle="Pick the category that best fits your request."
             >
                 <form onSubmit={handleSelectContinue} className="space-y-5">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <FormLabel label="Workspace" required />
-                            <Select value={workspaceId} onChange={e => setWorkspaceId(e.target.value)}>
-                                {workspaces.map(w => (
-                                    <option key={w.id} value={w.id}>{w.name}</option>
-                                ))}
-                            </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <FormLabel label="Category" required />
-                            <Select
-                                value={categoryId}
-                                onChange={e => setCategoryId(e.target.value)}
-                                disabled={categoriesLoading || categories.length === 0}
-                            >
-                                <option value="">
-                                    {categoriesLoading
-                                        ? 'Loading categories…'
-                                        : categories.length === 0
-                                            ? 'No categories available'
-                                            : 'Select a category…'}
-                                </option>
-                                {categories.map(c => (
-                                    <option key={c.id} value={c.id}>{c.label}</option>
-                                ))}
-                            </Select>
-                        </div>
+                    <div className="space-y-1.5">
+                        <FormLabel label="Category" required />
+                        <Select
+                            value={categoryId}
+                            onChange={e => setCategoryId(e.target.value)}
+                            disabled={categoriesLoading || categories.length === 0}
+                        >
+                            <option value="">
+                                {categoriesLoading
+                                    ? 'Loading categories…'
+                                    : categories.length === 0
+                                        ? 'No categories available'
+                                        : 'Select a category…'}
+                            </option>
+                            {categories.map(c => (
+                                <option key={c.id} value={c.id}>{c.label}</option>
+                            ))}
+                        </Select>
                     </div>
 
                     <div className="flex justify-end">
@@ -165,7 +171,7 @@ export function PublicSubmitScreen() {
 
     return (
         <PublicLayout
-            eyebrow="Step 2 of 2"
+            eyebrow={`Submitting to ${workspace.name}`}
             title="Tell us about it"
             subtitle="The more detail, the better."
         >

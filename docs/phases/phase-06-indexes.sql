@@ -19,7 +19,7 @@ create index if not exists idx_requests_workspace_status
   on public.requests (workspace_id, status);
 
 create index if not exists idx_requests_department_status
-  on public.requests (department_id, status) where department_id is not null;
+  on public.requests (department_id, status);
 
 create index if not exists idx_requests_due_date
   on public.requests (workspace_id, due_date) where due_date is not null;

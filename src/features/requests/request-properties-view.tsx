@@ -57,11 +57,7 @@ function MetaView({ request }: { request: Request }) {
             </MetaRow>
 
             <MetaRow icon={<Building2 />} label="Department">
-                {request.departmentName ? (
-                    <Paragraph.sm>{request.departmentName}</Paragraph.sm>
-                ) : (
-                    <Paragraph.sm className="text-quaternary">Unrouted</Paragraph.sm>
-                )}
+                <Paragraph.sm>{request.departmentName ?? '—'}</Paragraph.sm>
             </MetaRow>
 
             <MetaRow icon={<Calendar className="size-4" />} label="Due date">

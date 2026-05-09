@@ -5,7 +5,6 @@ import { Spinner } from '@/components/feedback/spinner'
 import { Badge } from '@/components/display/badge'
 import { Label, Paragraph } from '@/components/display/text'
 import { MetaRow } from '@/components/display/meta-row'
-import { Button } from '@/components/controls/button'
 import { fetchRequestByTrackingId, type PublicTrackedRequest } from '@/data/fetch-request-by-tracking-id'
 import { PublicLayout } from '@/features/public-submit/public-layout'
 import { badgeColor } from '@/lib/color-keys'
@@ -44,7 +43,7 @@ export function PublicTrackScreen() {
             <PublicLayout title="Not found" subtitle="We couldn't find a request with that tracking ID.">
                 <div className="space-y-4 text-center">
                     <Paragraph.sm className="text-tertiary">
-                        Double-check the link, or <a href="/submit" className="text-brand_secondary hover:underline">submit a new request</a>.
+                        Double-check the link your team shared with you.
                     </Paragraph.sm>
                 </div>
             </PublicLayout>
@@ -90,12 +89,6 @@ export function PublicTrackScreen() {
                     <Paragraph.xs className="text-quaternary">
                         Requested by <span className="text-tertiary">{tracked.requestedByName}</span>
                     </Paragraph.xs>
-                </div>
-
-                <div className="pt-2">
-                    <a href="/submit">
-                        <Button variant="secondary" className="w-full">Submit another request</Button>
-                    </a>
                 </div>
 
                 <Paragraph.xs className="text-center text-quaternary pt-2">

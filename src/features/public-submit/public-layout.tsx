@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { routes } from '@/screens/app-routes'
 
+const BRAND_NAME = 'MOC Request'
+
 type PublicLayoutProps = {
     children: ReactNode
     eyebrow?: string
@@ -36,12 +38,12 @@ function PublicHeader() {
     return (
         <header className="border-b border-secondary bg-primary">
             <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
-                <Link to={`/${routes.submit}`} className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                     <div className="size-7 rounded-lg bg-brand_solid grid place-items-center text-primary_on-brand">
                         <span className="label-sm">M</span>
                     </div>
-                    <span className="label-md">MOC Request</span>
-                </Link>
+                    <span className="label-md">{BRAND_NAME}</span>
+                </div>
                 <Link to={`/${routes.login}`} className="paragraph-sm text-brand_secondary hover:underline">
                     Sign in
                 </Link>

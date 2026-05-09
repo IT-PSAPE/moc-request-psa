@@ -6,6 +6,7 @@ import { routes } from '@/screens/app-routes'
 type SuccessState = {
     trackingId: string
     workspaceName: string
+    workspaceSlug: string
 }
 
 export function PublicSubmitSuccessScreen() {
@@ -13,12 +14,12 @@ export function PublicSubmitSuccessScreen() {
     const location = useLocation()
     const state = location.state as SuccessState | null
 
-    if (!state?.trackingId) {
-        return <Navigate to={`/${routes.submit}`} replace />
+    if (!state?.trackingId || !state?.workspaceSlug) {
+        return <Navigate to={`/${routes.login}`} replace />
     }
 
     function handleSubmitAnother() {
-        navigate(`/${routes.submit}`, { replace: true })
+        navigate(`/submit/${state!.workspaceSlug}`, { replace: true })
     }
 
     return (

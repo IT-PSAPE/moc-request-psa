@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchCommentsForRequest } from '@/data/fetch-comments'
 import { postComment, deleteComment } from '@/data/mutate-comments'
-import { mockStore } from '@/data/store/mock-store'
+import { supabase } from '@/lib/supabase'
 import type { ResolvedComment } from '@/types/comments'
 
 export function useRequestComments(requestId: string) {
@@ -20,14 +20,21 @@ export function useRequestComments(requestId: string) {
             await refresh()
             if (active) setLoading(false)
         })()
-        const unsubscribe = mockStore('comments').subscribe(() => {
-            refresh()
-        })
+
+        const channel = supabase
+            .channel(`comments:${requestId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'comments', filter: `request_id=eq.${requestId}` },
+                () => { void refresh() },
+            )
+            .subscribe()
+
         return () => {
             active = false
-            unsubscribe()
+            void supabase.removeChannel(channel)
         }
-    }, [refresh])
+    }, [refresh, requestId])
 
     const post = useCallback(async (body: string) => {
         await postComment(requestId, body)

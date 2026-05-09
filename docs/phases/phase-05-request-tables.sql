@@ -6,7 +6,10 @@ create table public.requests (
   tracking_id text not null unique,
   title text not null,
   category_id uuid references public.categories(id) on delete set null,
-  department_id uuid references public.departments(id) on delete set null,
+  -- department_id is required: every request is routed at submit time. The frontend
+  -- refuses to delete a department that still has requests; on delete restrict is the
+  -- DB-level guard that mirrors that contract.
+  department_id uuid not null references public.departments(id) on delete restrict,
   priority public.request_priority not null default 'medium',
   status public.request_status not null default 'submitted',
   due_date timestamptz,

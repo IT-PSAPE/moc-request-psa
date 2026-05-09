@@ -1,8 +1,4 @@
-import { mockStore } from './store/mock-store'
-import { type RequestRow } from './map-request'
-import { type CategoryRow } from './map-category'
-import { type DepartmentRow } from './map-department'
-import { type WorkspaceRow } from './map-workspace'
+import { supabase } from '@/lib/supabase'
 import type { Priority, Status } from '@/types/requests'
 
 export type PublicTrackedRequest = {
@@ -19,32 +15,41 @@ export type PublicTrackedRequest = {
     updatedAt: string
 }
 
+type RpcRow = {
+    tracking_id: string
+    title: string
+    status: Status
+    priority: Priority
+    category_label: string | null
+    category_color: string | null
+    department_name: string | null
+    workspace_name: string
+    requested_by_name: string
+    created_at: string
+    updated_at: string
+}
+
 export async function fetchRequestByTrackingId(trackingId: string): Promise<PublicTrackedRequest | null> {
     const normalized = trackingId.trim().toUpperCase()
     if (!normalized) return null
 
-    const row = mockStore<RequestRow>('requests').findOne(r => r.tracking_id === normalized)
+    const { data, error } = await supabase.rpc('lookup_request_by_tracking_id', {
+        p_tracking_id: normalized,
+    })
+    if (error) throw new Error(error.message)
+    const rows = (data ?? []) as RpcRow[]
+    const row = rows[0]
     if (!row) return null
-
-    const workspace = mockStore<WorkspaceRow>('workspaces').find(row.workspace_id)
-    if (!workspace) return null
-
-    const category = row.category_id
-        ? mockStore<CategoryRow>('categories').find(row.category_id) ?? null
-        : null
-    const department = row.department_id
-        ? mockStore<DepartmentRow>('departments').find(row.department_id) ?? null
-        : null
 
     return {
         trackingId: row.tracking_id,
         title: row.title,
         status: row.status,
         priority: row.priority,
-        categoryLabel: category?.label ?? null,
-        categoryColor: category?.color_key ?? 'gray',
-        departmentName: department?.name ?? null,
-        workspaceName: workspace.name,
+        categoryLabel: row.category_label,
+        categoryColor: row.category_color ?? 'gray',
+        departmentName: row.department_name,
+        workspaceName: row.workspace_name,
         requestedByName: row.requested_by_name,
         createdAt: row.created_at,
         updatedAt: row.updated_at,

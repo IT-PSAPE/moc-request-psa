@@ -1,41 +1,45 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { getCurrentContext } from './store/current-context'
 import { type WorkspaceMemberRow } from './map-workspace-member'
-import { type DepartmentMemberRow } from './map-department-member'
-import { type DepartmentRow } from './map-department'
 import type { DepartmentRole } from '@/types/departments'
 import type { MemberStatus } from '@/types/profiles'
 
 export async function approveWorkspaceMember(membershipId: string, roleId: string): Promise<void> {
     const ctx = getCurrentContext()
-    const store = mockStore<WorkspaceMemberRow>('workspace_members')
-    const row = store.find(membershipId)
-    if (!row) throw new Error('Membership not found')
-
-    store.update(membershipId, {
-        status: 'active',
-        workspace_role_id: roleId,
-        approved_at: new Date().toISOString(),
-        approved_by: ctx.userId,
-    })
+    const { error } = await supabase
+        .from('workspace_members')
+        .update({
+            status: 'active',
+            workspace_role_id: roleId,
+            approved_at: new Date().toISOString(),
+            approved_by: ctx.userId,
+        })
+        .eq('id', membershipId)
+    if (error) throw new Error(error.message)
 }
 
 export async function rejectWorkspaceMember(membershipId: string): Promise<void> {
-    const store = mockStore<WorkspaceMemberRow>('workspace_members')
-    const row = store.find(membershipId)
-    if (!row) return
-    store.update(membershipId, { status: 'rejected' })
+    const { error } = await supabase
+        .from('workspace_members')
+        .update({ status: 'rejected' })
+        .eq('id', membershipId)
+    if (error) throw new Error(error.message)
 }
 
 export async function reactivateWorkspaceMember(membershipId: string): Promise<void> {
-    const store = mockStore<WorkspaceMemberRow>('workspace_members')
-    const row = store.find(membershipId)
-    if (!row) return
-    store.update(membershipId, { status: 'pending' })
+    const { error } = await supabase
+        .from('workspace_members')
+        .update({ status: 'pending' })
+        .eq('id', membershipId)
+    if (error) throw new Error(error.message)
 }
 
 export async function setWorkspaceMemberRole(membershipId: string, roleId: string): Promise<void> {
-    mockStore<WorkspaceMemberRow>('workspace_members').update(membershipId, { workspace_role_id: roleId })
+    const { error } = await supabase
+        .from('workspace_members')
+        .update({ workspace_role_id: roleId })
+        .eq('id', membershipId)
+    if (error) throw new Error(error.message)
 }
 
 export type SetMemberStatusOptions = {
@@ -48,35 +52,62 @@ export async function setMemberStatus(
     options: SetMemberStatusOptions = {},
 ): Promise<void> {
     const ctx = getCurrentContext()
-    const store = mockStore<WorkspaceMemberRow>('workspace_members')
-    const row = store.find(membershipId)
+    const { data: row, error: fetchError } = await supabase
+        .from('workspace_members')
+        .select('status, workspace_role_id')
+        .eq('id', membershipId)
+        .maybeSingle<Pick<WorkspaceMemberRow, 'status' | 'workspace_role_id'>>()
+    if (fetchError) throw new Error(fetchError.message)
     if (!row) throw new Error('Membership not found')
     if (row.status === nextStatus) return
 
     const patch: Partial<WorkspaceMemberRow> = { status: nextStatus }
     if (nextStatus === 'active') {
-        patch.workspace_role_id = row.workspace_role_id ?? options.fallbackRoleId ?? null
+        const roleId = row.workspace_role_id ?? options.fallbackRoleId ?? null
+        if (!roleId) throw new Error('A role is required when activating a member')
+        patch.workspace_role_id = roleId
         patch.approved_at = new Date().toISOString()
         patch.approved_by = ctx.userId
-        if (!patch.workspace_role_id) {
-            throw new Error('A role is required when activating a member')
-        }
     }
-    store.update(membershipId, patch)
+    const { error } = await supabase
+        .from('workspace_members')
+        .update(patch)
+        .eq('id', membershipId)
+    if (error) throw new Error(error.message)
 }
 
 export async function removeWorkspaceMember(membershipId: string): Promise<void> {
-    const store = mockStore<WorkspaceMemberRow>('workspace_members')
-    const row = store.find(membershipId)
+    // workspace_members row carries (workspace_id, user_id) — fetch them so we
+    // can also drop the user's department memberships in that workspace.
+    const { data: row, error: fetchError } = await supabase
+        .from('workspace_members')
+        .select('workspace_id, user_id')
+        .eq('id', membershipId)
+        .maybeSingle<Pick<WorkspaceMemberRow, 'workspace_id' | 'user_id'>>()
+    if (fetchError) throw new Error(fetchError.message)
     if (!row) return
-    store.delete(membershipId)
-    // Drop department memberships in this workspace
-    const departmentsInWorkspace = mockStore<DepartmentRow>('departments')
-        .where(d => d.workspace_id === row.workspace_id)
-        .map(d => d.id)
-    mockStore<DepartmentMemberRow>('department_members').deleteWhere(
-        dm => dm.user_id === row.user_id && departmentsInWorkspace.includes(dm.department_id),
-    )
+
+    const { data: deptIds, error: deptError } = await supabase
+        .from('departments')
+        .select('id')
+        .eq('workspace_id', row.workspace_id)
+    if (deptError) throw new Error(deptError.message)
+    const ids = (deptIds ?? []).map(d => (d as { id: string }).id)
+
+    if (ids.length > 0) {
+        const { error: dmError } = await supabase
+            .from('department_members')
+            .delete()
+            .eq('user_id', row.user_id)
+            .in('department_id', ids)
+        if (dmError) throw new Error(dmError.message)
+    }
+
+    const { error } = await supabase
+        .from('workspace_members')
+        .delete()
+        .eq('id', membershipId)
+    if (error) throw new Error(error.message)
 }
 
 export type DepartmentMembershipUpdate = {
@@ -89,24 +120,18 @@ export async function addDepartmentMember(
     userId: string,
     role: DepartmentRole = 'member',
 ): Promise<void> {
-    const store = mockStore<DepartmentMemberRow>('department_members')
-    const existing = store.findOne(dm => dm.department_id === departmentId && dm.user_id === userId)
-    if (existing) {
-        if (existing.role !== role) store.update(existing.id, { role })
-        return
-    }
-    store.insert({
-        id: crypto.randomUUID(),
-        department_id: departmentId,
-        user_id: userId,
-        role,
-        created_at: new Date().toISOString(),
-    })
+    const { error } = await supabase
+        .from('department_members')
+        .upsert({ department_id: departmentId, user_id: userId, role }, { onConflict: 'department_id,user_id' })
+    if (error) throw new Error(error.message)
 }
 
 export async function removeDepartmentMember(departmentId: string, userId: string): Promise<void> {
-    mockStore<DepartmentMemberRow>('department_members')
-        .deleteWhere(dm => dm.department_id === departmentId && dm.user_id === userId)
+    const { error } = await supabase
+        .from('department_members')
+        .delete()
+        .match({ department_id: departmentId, user_id: userId })
+    if (error) throw new Error(error.message)
 }
 
 export async function setDepartmentMemberRole(
@@ -114,10 +139,11 @@ export async function setDepartmentMemberRole(
     userId: string,
     role: DepartmentRole,
 ): Promise<void> {
-    const store = mockStore<DepartmentMemberRow>('department_members')
-    const existing = store.findOne(dm => dm.department_id === departmentId && dm.user_id === userId)
-    if (!existing) return
-    store.update(existing.id, { role })
+    const { error } = await supabase
+        .from('department_members')
+        .update({ role })
+        .match({ department_id: departmentId, user_id: userId })
+    if (error) throw new Error(error.message)
 }
 
 export async function setUserDepartmentMemberships(
@@ -125,26 +151,28 @@ export async function setUserDepartmentMemberships(
     workspaceId: string,
     updates: DepartmentMembershipUpdate[],
 ): Promise<void> {
-    const departmentsInWorkspace = new Set(
-        mockStore<DepartmentRow>('departments')
-            .where(d => d.workspace_id === workspaceId)
-            .map(d => d.id),
-    )
+    const { data: deptRows, error: deptError } = await supabase
+        .from('departments')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+    if (deptError) throw new Error(deptError.message)
+    const allowed = new Set((deptRows ?? []).map(d => (d as { id: string }).id))
 
-    const store = mockStore<DepartmentMemberRow>('department_members')
-    // Remove existing memberships in this workspace
-    store.deleteWhere(dm => dm.user_id === userId && departmentsInWorkspace.has(dm.department_id))
-
-    // Insert the new ones
-    const now = new Date().toISOString()
-    for (const update of updates) {
-        if (!departmentsInWorkspace.has(update.departmentId)) continue
-        store.insert({
-            id: crypto.randomUUID(),
-            department_id: update.departmentId,
-            user_id: userId,
-            role: update.role,
-            created_at: now,
-        })
+    if (allowed.size > 0) {
+        const { error: clearError } = await supabase
+            .from('department_members')
+            .delete()
+            .eq('user_id', userId)
+            .in('department_id', Array.from(allowed))
+        if (clearError) throw new Error(clearError.message)
     }
+
+    const inserts = updates
+        .filter(u => allowed.has(u.departmentId))
+        .map(u => ({ department_id: u.departmentId, user_id: userId, role: u.role }))
+    if (inserts.length === 0) return
+    const { error: insertError } = await supabase
+        .from('department_members')
+        .insert(inserts)
+    if (insertError) throw new Error(insertError.message)
 }

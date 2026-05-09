@@ -1,6 +1,4 @@
-import { Link } from 'react-router-dom'
 import { PublicLayout } from '@/features/public-submit/public-layout'
-import { routes } from '@/screens/app-routes'
 
 export function PublicPrivacyScreen() {
     return (
@@ -22,9 +20,7 @@ export function PublicPrivacyScreen() {
                 </section>
 
                 <section className="space-y-2">
-                    <h2 className="label-md text-primary">What we collect when you use{' '}
-                        <Link to={`/${routes.submit}`} className="text-brand_secondary hover:underline">/submit</Link>
-                    </h2>
+                    <h2 className="label-md text-primary">What we collect when you submit a request</h2>
                     <ul className="list-disc space-y-1 pl-5">
                         <li><strong className="text-primary">Required:</strong> the workspace and category you picked, a title, your name, and the "What" of your request.</li>
                         <li><strong className="text-primary">Optional:</strong> your email, priority, preferred due date, and the rest of the 5 Ws and 1 H (Who, When, Where, Why, How).</li>
@@ -88,9 +84,8 @@ export function PublicPrivacyScreen() {
                 <section className="space-y-2">
                     <h2 className="label-md text-primary">Where your data lives</h2>
                     <p>
-                        The current build stores mock request data in local JSON files that back the application during
-                        development. When the platform moves to Phase 2, requests will be stored in a Postgres database
-                        with row-level access rules so each workspace sees only its own data.
+                        Requests are stored in a Supabase Postgres database with row-level access rules so each
+                        workspace sees only its own data.
                     </p>
                 </section>
 

@@ -1,9 +1,6 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { getCurrentContext } from './store/current-context'
 import { mapDepartment, type DepartmentRow } from './map-department'
-import { type DepartmentMemberRow } from './map-department-member'
-import { type CategoryRow } from './map-category'
-import { type RequestRow } from './map-request'
 import type { Department } from '@/types/departments'
 
 export type DepartmentInput = {
@@ -16,52 +13,61 @@ export async function createDepartment(input: DepartmentInput): Promise<Departme
     const ctx = getCurrentContext()
     if (!ctx.activeWorkspaceId) throw new Error('No active workspace')
 
-    const store = mockStore<DepartmentRow>('departments')
-    const sortOrder = store.where(d => d.workspace_id === ctx.activeWorkspaceId).length
+    const { count, error: countError } = await supabase
+        .from('departments')
+        .select('*', { count: 'exact', head: true })
+        .eq('workspace_id', ctx.activeWorkspaceId)
+    if (countError) throw new Error(countError.message)
+    const sortOrder = count ?? 0
 
-    const now = new Date().toISOString()
-    const row: DepartmentRow = {
-        id: crypto.randomUUID(),
-        workspace_id: ctx.activeWorkspaceId,
-        name: input.name.trim(),
-        description: input.description?.trim() || null,
-        color_key: input.colorKey,
-        sort_order: sortOrder,
-        created_at: now,
-        updated_at: now,
-    }
-    store.insert(row)
-    return mapDepartment(row)
+    const { data, error } = await supabase
+        .from('departments')
+        .insert({
+            workspace_id: ctx.activeWorkspaceId,
+            name: input.name.trim(),
+            description: input.description?.trim() || null,
+            color_key: input.colorKey,
+            sort_order: sortOrder,
+        })
+        .select('*')
+        .single<DepartmentRow>()
+    if (error || !data) throw new Error(error?.message ?? 'Department insert failed')
+    return mapDepartment(data)
 }
 
 export async function updateDepartment(id: string, input: DepartmentInput): Promise<Department> {
-    const store = mockStore<DepartmentRow>('departments')
-    const updated = store.update(id, {
-        name: input.name.trim(),
-        description: input.description?.trim() || null,
-        color_key: input.colorKey,
-        updated_at: new Date().toISOString(),
-    })
-    return mapDepartment(updated)
+    const { data, error } = await supabase
+        .from('departments')
+        .update({
+            name: input.name.trim(),
+            description: input.description?.trim() || null,
+            color_key: input.colorKey,
+        })
+        .eq('id', id)
+        .select('*')
+        .single<DepartmentRow>()
+    if (error || !data) throw new Error(error?.message ?? 'Department update failed')
+    return mapDepartment(data)
 }
 
 export async function deleteDepartment(id: string): Promise<void> {
-    const store = mockStore<DepartmentRow>('departments')
-    if (!store.find(id)) return
-    store.delete(id)
-
-    // Cascade: drop department memberships
-    mockStore<DepartmentMemberRow>('department_members').deleteWhere(dm => dm.department_id === id)
-
-    // Null out categories that pointed to this department as default
-    const categoriesStore = mockStore<CategoryRow>('categories')
-    for (const cat of categoriesStore.where(c => c.default_department_id === id)) {
-        categoriesStore.update(cat.id, { default_department_id: null })
+    // Phase-05 enforces ON DELETE RESTRICT on requests.department_id and
+    // categories.default_department_id, so the database itself blocks the
+    // delete if anything still references this row. Surface a friendly
+    // message instead of the raw constraint error.
+    const [{ count: requestCount, error: reqError }, { count: categoryCount, error: catError }] = await Promise.all([
+        supabase.from('requests').select('*', { count: 'exact', head: true }).eq('department_id', id),
+        supabase.from('categories').select('*', { count: 'exact', head: true }).eq('default_department_id', id),
+    ])
+    if (reqError) throw new Error(reqError.message)
+    if (catError) throw new Error(catError.message)
+    if ((requestCount ?? 0) > 0) {
+        throw new Error(`Can't delete this department — ${requestCount} request(s) are routed to it. Reassign them first.`)
+    }
+    if ((categoryCount ?? 0) > 0) {
+        throw new Error(`Can't delete this department — ${categoryCount} category(ies) use it as the default route. Update those first.`)
     }
 
-    // Null out routing on requests
-    const requestsStore = mockStore<RequestRow>('requests')
-    for (const req of requestsStore.where(r => r.department_id === id)) {
-        requestsStore.update(req.id, { department_id: null, updated_at: new Date().toISOString() })
-    }
+    const { error } = await supabase.from('departments').delete().eq('id', id)
+    if (error) throw new Error(error.message)
 }

@@ -1,4 +1,4 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { getCurrentContext } from './store/current-context'
 import { mapComment, type CommentRow } from './map-comment'
 import { emitActivity } from './mutate-activity'
@@ -10,27 +10,28 @@ export async function postComment(requestId: string, body: string): Promise<Comm
     const trimmed = body.trim()
     if (!trimmed) throw new Error('Comment body required')
 
-    const now = new Date().toISOString()
-    const row: CommentRow = {
-        id: crypto.randomUUID(),
-        request_id: requestId,
-        author_id: ctx.userId,
-        body: trimmed,
-        created_at: now,
-        updated_at: now,
-    }
-    mockStore<CommentRow>('comments').insert(row)
+    const { data, error } = await supabase
+        .from('comments')
+        .insert({
+            request_id: requestId,
+            author_id: ctx.userId,
+            body: trimmed,
+        })
+        .select('*')
+        .single<CommentRow>()
+    if (error || !data) throw new Error(error?.message ?? 'Comment insert failed')
 
-    emitActivity({
+    await emitActivity({
         requestId,
         actorId: ctx.userId,
         action: 'comment_posted',
-        payload: { commentId: row.id, excerpt: trimmed.slice(0, 80) },
+        payload: { commentId: data.id, excerpt: trimmed.slice(0, 80) },
     })
 
-    return mapComment(row)
+    return mapComment(data)
 }
 
 export async function deleteComment(commentId: string): Promise<void> {
-    mockStore<CommentRow>('comments').delete(commentId)
+    const { error } = await supabase.from('comments').delete().eq('id', commentId)
+    if (error) throw new Error(error.message)
 }

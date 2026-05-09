@@ -122,6 +122,9 @@ export function useCategoriesEditor(categories: Category[]) {
                 if (!trimmed) {
                     throw new Error('Every category needs a label')
                 }
+                if (!row.defaultDepartmentId) {
+                    throw new Error(`Category "${trimmed || 'unnamed'}" needs a routing department`)
+                }
                 if (row.isNew) {
                     await createCategory({
                         label: trimmed,

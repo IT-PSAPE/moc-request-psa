@@ -1,9 +1,7 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { getCurrentContext } from './store/current-context'
 import { mapWorkspace, type WorkspaceRow } from './map-workspace'
 import { type WorkspaceRoleRow } from './map-workspace-role'
-import { type WorkspaceMemberRow } from './map-workspace-member'
-import { type ProfileRow } from './map-profile'
 import type { Workspace } from '@/types/workspaces'
 
 export type WorkspaceUpdate = {
@@ -12,13 +10,17 @@ export type WorkspaceUpdate = {
 }
 
 export async function updateWorkspace(id: string, input: WorkspaceUpdate): Promise<Workspace> {
-    const store = mockStore<WorkspaceRow>('workspaces')
-    const row = store.update(id, {
-        name: input.name.trim(),
-        description: input.description?.trim() || null,
-        updated_at: new Date().toISOString(),
-    })
-    return mapWorkspace(row)
+    const { data, error } = await supabase
+        .from('workspaces')
+        .update({
+            name: input.name.trim(),
+            description: input.description?.trim() || null,
+        })
+        .eq('id', id)
+        .select('*')
+        .single<WorkspaceRow>()
+    if (error || !data) throw new Error(error?.message ?? 'Workspace update failed')
+    return mapWorkspace(data)
 }
 
 export type CreateWorkspaceInput = {
@@ -34,95 +36,63 @@ export type CreateWorkspaceResult = {
 
 export async function createWorkspace(input: CreateWorkspaceInput): Promise<CreateWorkspaceResult> {
     const ctx = getCurrentContext()
-    const workspaces = mockStore<WorkspaceRow>('workspaces')
     const slug = input.slug.trim().toLowerCase()
     if (!slug) throw new Error('Slug is required')
-    if (workspaces.findOne(w => w.slug === slug)) throw new Error('A workspace with that slug already exists')
 
-    const now = new Date().toISOString()
-    const workspaceId = crypto.randomUUID()
-    const workspaceRow: WorkspaceRow = {
-        id: workspaceId,
-        name: input.name.trim(),
-        slug,
-        description: input.description?.trim() || null,
-        created_by: ctx.userId,
-        created_at: now,
-        updated_at: now,
+    const { data: workspaceRow, error: insertError } = await supabase
+        .from('workspaces')
+        .insert({
+            name: input.name.trim(),
+            slug,
+            description: input.description?.trim() || null,
+            created_by: ctx.userId,
+        })
+        .select('*')
+        .single<WorkspaceRow>()
+    if (insertError) {
+        if (insertError.code === '23505') throw new Error('A workspace with that slug already exists')
+        throw new Error(insertError.message)
     }
-    workspaces.insert(workspaceRow)
 
-    const rolesStore = mockStore<WorkspaceRoleRow>('workspace_roles')
-    const adminRole: WorkspaceRoleRow = {
-        id: crypto.randomUUID(),
-        workspace_id: workspaceId,
-        name: 'Admin',
-        can_create: true,
-        can_read: true,
-        can_update: true,
-        can_delete: true,
-        can_manage_roles: true,
-        is_system: true,
-    }
-    const editorRole: WorkspaceRoleRow = {
-        id: crypto.randomUUID(),
-        workspace_id: workspaceId,
-        name: 'Editor',
-        can_create: true,
-        can_read: true,
-        can_update: true,
-        can_delete: false,
-        can_manage_roles: false,
-        is_system: true,
-    }
-    const viewerRole: WorkspaceRoleRow = {
-        id: crypto.randomUUID(),
-        workspace_id: workspaceId,
-        name: 'Viewer',
-        can_create: false,
-        can_read: true,
-        can_update: false,
-        can_delete: false,
-        can_manage_roles: false,
-        is_system: true,
-    }
-    rolesStore.insert(adminRole)
-    rolesStore.insert(editorRole)
-    rolesStore.insert(viewerRole)
+    const workspaceId = workspaceRow.id
+    const { data: roleRows, error: rolesError } = await supabase
+        .from('workspace_roles')
+        .insert([
+            { workspace_id: workspaceId, name: 'Admin',  can_create: true,  can_read: true,  can_update: true,  can_delete: true,  can_manage_roles: true,  is_system: true },
+            { workspace_id: workspaceId, name: 'Editor', can_create: true,  can_read: true,  can_update: true,  can_delete: false, can_manage_roles: false, is_system: true },
+            { workspace_id: workspaceId, name: 'Viewer', can_create: false, can_read: true,  can_update: false, can_delete: false, can_manage_roles: false, is_system: true },
+        ])
+        .select('*')
+    if (rolesError) throw new Error(rolesError.message)
+
+    const adminRole = (roleRows ?? []).find(r => (r as WorkspaceRoleRow).name === 'Admin') as WorkspaceRoleRow | undefined
+    if (!adminRole) throw new Error('Admin role missing for workspace')
 
     return { workspace: mapWorkspace(workspaceRow), adminRoleId: adminRole.id }
 }
 
 export async function assignWorkspaceAdmin(workspaceId: string, profileId: string): Promise<void> {
     const ctx = getCurrentContext()
-    const profile = mockStore<ProfileRow>('profiles').find(profileId)
-    if (!profile) throw new Error('User not found')
 
-    const adminRole = mockStore<WorkspaceRoleRow>('workspace_roles').findOne(
-        r => r.workspace_id === workspaceId && r.name === 'Admin',
-    )
-    if (!adminRole) throw new Error('Admin role missing for workspace')
+    const { data: roleRow, error: roleError } = await supabase
+        .from('workspace_roles')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('name', 'Admin')
+        .maybeSingle<{ id: string }>()
+    if (roleError) throw new Error(roleError.message)
+    if (!roleRow) throw new Error('Admin role missing for workspace')
 
-    const membersStore = mockStore<WorkspaceMemberRow>('workspace_members')
-    const existing = membersStore.findOne(m => m.workspace_id === workspaceId && m.user_id === profileId)
     const now = new Date().toISOString()
-    if (existing) {
-        membersStore.update(existing.id, {
+    const { error: upsertError } = await supabase
+        .from('workspace_members')
+        .upsert({
+            workspace_id: workspaceId,
+            user_id: profileId,
             status: 'active',
-            workspace_role_id: adminRole.id,
+            workspace_role_id: roleRow.id,
             approved_at: now,
             approved_by: ctx.userId,
-        })
-        return
-    }
-    membersStore.insert({
-        id: crypto.randomUUID(),
-        workspace_id: workspaceId,
-        user_id: profileId,
-        status: 'active',
-        workspace_role_id: adminRole.id,
-        requested_at: now,
-        approved_at: now,
-        approved_by: ctx.userId,
-    })
+        }, { onConflict: 'workspace_id,user_id' })
+    if (upsertError) throw new Error(upsertError.message)
 }

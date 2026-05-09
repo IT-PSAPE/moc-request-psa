@@ -51,7 +51,8 @@ begin
 end;
 $$;
 
--- Auto-emit 'created' (and 'department_routed' if routed) on insert.
+-- Auto-emit 'created' and 'department_routed' on insert. Every request is routed
+-- at submit time (department_id is NOT NULL), so the routing log is unconditional.
 create or replace function public.requests_after_insert()
 returns trigger
 language plpgsql
@@ -67,15 +68,13 @@ begin
       'requestedByName', new.requested_by_name
     )
   );
-  if new.department_id is not null then
-    insert into public.activity_logs (request_id, actor_id, action, payload)
-    values (
-      new.id,
-      new.submitted_by_user_id,
-      'department_routed',
-      jsonb_build_object('fromId', null, 'toId', new.department_id)
-    );
-  end if;
+  insert into public.activity_logs (request_id, actor_id, action, payload)
+  values (
+    new.id,
+    new.submitted_by_user_id,
+    'department_routed',
+    jsonb_build_object('fromId', null, 'toId', new.department_id)
+  );
   return new;
 end;
 $$;

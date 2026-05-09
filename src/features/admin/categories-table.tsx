@@ -98,13 +98,10 @@ export function CategoriesTable({ categories, departments, onSaved }: Categories
                                         <Dropdown.Root placement="bottom-start">
                                             <Dropdown.Trigger>
                                                 <span className="inline-flex items-center gap-1 cursor-pointer paragraph-sm text-primary hover:text-brand">
-                                                    {departments.find(d => d.id === row.defaultDepartmentId)?.name ?? '— Unrouted —'}
+                                                    {departments.find(d => d.id === row.defaultDepartmentId)?.name ?? 'Pick a department…'}
                                                 </span>
                                             </Dropdown.Trigger>
                                             <Dropdown.Panel>
-                                                <Dropdown.Item onSelect={() => actions.updateField(row.id, { defaultDepartmentId: null })}>
-                                                    — Unrouted —
-                                                </Dropdown.Item>
                                                 {departments.map(d => (
                                                     <Dropdown.Item key={d.id} onSelect={() => actions.updateField(row.id, { defaultDepartmentId: d.id })}>
                                                         {d.name}

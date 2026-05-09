@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchActivityForRequest } from '@/data/fetch-activity'
-import { mockStore } from '@/data/store/mock-store'
+import { supabase } from '@/lib/supabase'
 import type { ResolvedActivityEntry } from '@/types/activity'
 
 export function useRequestActivity(requestId: string) {
@@ -20,14 +20,20 @@ export function useRequestActivity(requestId: string) {
             if (active) setLoading(false)
         })()
 
-        const unsubscribe = mockStore('activity_logs').subscribe(() => {
-            refresh()
-        })
+        const channel = supabase
+            .channel(`activity:${requestId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'activity_logs', filter: `request_id=eq.${requestId}` },
+                () => { void refresh() },
+            )
+            .subscribe()
+
         return () => {
             active = false
-            unsubscribe()
+            void supabase.removeChannel(channel)
         }
-    }, [refresh])
+    }, [refresh, requestId])
 
     return { entries, loading, refresh }
 }

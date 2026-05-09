@@ -1,6 +1,6 @@
 # Schema
 
-Canonical data model. The mock layer in `src/data/store/` and the JSON seeds in `src/data/mocks/` mirror this exactly. The Phase 2 SQL migrations under `docs/phases/` realise the same schema in Postgres.
+Canonical data model. The SQL migrations under `docs/phases/` are the source of truth — apply them to a fresh Supabase project in numbered order. The TypeScript row types in `src/data/map-*.ts` mirror the same column shapes.
 
 ## Workspace scoping
 
@@ -80,7 +80,7 @@ unique(`workspace_id`, `user_id`)
 ### `department_members`
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | `uuid` | synthetic PK in mock layer; real DB uses composite (`department_id`, `user_id`) |
+| (composite PK) | — | primary key is `(department_id, user_id)` |
 | `department_id`, `user_id` | `uuid` | FKs |
 | `role` | `department_role` | `lead` or `member` |
 
@@ -93,9 +93,9 @@ Workspace-defined. Drives the public form and routes new submissions.
 | `workspace_id` | `uuid` | FK |
 | `label` | `text` | unique within workspace |
 | `color_key` | `text` | |
-| `default_department_id` | `uuid?` | FK; null = unrouted (admin must triage) |
+| `default_department_id` | `uuid?` | FK; required at submit time — public submissions are rejected if null |
 | `sort_order` | `integer` | |
-| `is_active` | `boolean` | when false, category is hidden from `/submit` |
+| `is_active` | `boolean` | when false, category is hidden from the public submit form |
 
 ### `requests`
 The core entity.
@@ -107,13 +107,13 @@ The core entity.
 | `tracking_id` | `text` | unique; 8-char Crockford base32 |
 | `title` | `text` | |
 | `category_id` | `uuid?` | FK |
-| `department_id` | `uuid?` | FK; routed at submit, admin can override |
+| `department_id` | `uuid` | FK; required — every request is routed at submit time, admin can change but not unset |
 | `priority` | `request_priority` | default `medium` |
 | `status` | `request_status` | default `submitted` |
 | `due_date` | `timestamptz?` | |
 | `requested_by_name` | `text` | required |
 | `requested_by_email` | `text?` | |
-| `submitted_by_user_id` | `uuid?` | null when via `/submit` |
+| `submitted_by_user_id` | `uuid?` | null for public-form submissions (`/submit/<slug>`) |
 | `source` | `submission_source` | |
 | `who`, `what`, `when_text`, `where_text`, `why`, `how` | `text` | 5W1H, default `''` |
 | `notes` | `text?` | internal |

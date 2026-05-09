@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Mail, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/controls/button'
 import { Input } from '@/components/form/input'
 import { FormLabel } from '@/components/form/form-label'
-import { routes } from '@/screens/app-routes'
 import { AuthLayout } from './auth-layout'
 
 export function LoginScreen() {
@@ -72,10 +71,7 @@ export function LoginScreen() {
                 </Button>
 
                 <p className="paragraph-sm text-center text-tertiary">
-                    Don't have an account?{' '}
-                    <Link to={`/${routes.signup}`} className="text-brand_secondary hover:underline">
-                        Sign up
-                    </Link>
+                    Need an account? Ask a workspace admin for the sign-up link they shared with you.
                 </p>
             </form>
         </AuthLayout>

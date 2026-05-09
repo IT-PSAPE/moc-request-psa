@@ -1,20 +1,28 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/controls/button'
-import { mockStore } from '@/data/store/mock-store'
-import { type WorkspaceRow } from '@/data/map-workspace'
+import { fetchWorkspaceById } from '@/data/fetch-workspaces'
+import type { Workspace } from '@/types/workspaces'
 import { routes } from '@/screens/app-routes'
 import { AuthLayout } from './auth-layout'
 
 export function PendingScreen() {
     const { state: { profile, memberships }, actions: { signOut } } = useAuth()
     const navigate = useNavigate()
+    const [pendingWorkspace, setPendingWorkspace] = useState<Workspace | null>(null)
 
-    const pendingWorkspace = useMemo(() => {
+    useEffect(() => {
+        let active = true
         const pending = memberships.find(m => m.status === 'pending')
-        if (!pending) return null
-        return mockStore<WorkspaceRow>('workspaces').find(pending.workspaceId) ?? null
+        if (!pending) {
+            setPendingWorkspace(null)
+            return
+        }
+        fetchWorkspaceById(pending.workspaceId).then(ws => {
+            if (active) setPendingWorkspace(ws)
+        })
+        return () => { active = false }
     }, [memberships])
 
     async function handleSignOut() {

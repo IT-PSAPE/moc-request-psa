@@ -26,6 +26,9 @@ begin
   if not v_category.is_active then
     raise exception 'Category not accepting submissions';
   end if;
+  if v_category.default_department_id is null then
+    raise exception 'Category has no default department — ask the workspace admin to configure routing';
+  end if;
 
   v_tracking_id := public.generate_tracking_id();
   v_id := gen_random_uuid();

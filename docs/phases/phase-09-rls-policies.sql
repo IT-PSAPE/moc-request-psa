@@ -120,32 +120,24 @@ create policy categories_admin_modify on public.categories
   for all using (private.is_workspace_admin(workspace_id))
   with check (private.is_workspace_admin(workspace_id));
 
+-- Visibility mirrors the frontend's canSeeRequest: platform admins and workspace
+-- admins see everything in-scope; everyone else only sees requests routed to a
+-- department they belong to. department_id is NOT NULL so we no longer have a
+-- separate "unrouted" branch.
 create policy requests_read on public.requests
   for select using (
     private.is_platform_admin()
     or private.is_workspace_admin(workspace_id)
-    or (
-      department_id is not null and private.is_department_member(department_id)
-    )
-    or exists (
-      select 1 from public.workspace_members m
-      where m.workspace_id = requests.workspace_id
-        and m.user_id = auth.uid()
-        and m.status = 'active'
-        and exists (
-          select 1 from public.workspace_roles r
-          where r.id = m.workspace_role_id and r.can_read = true
-        )
-    )
+    or private.is_department_member(department_id)
   );
 
 create policy requests_modify on public.requests
   for all using (
     private.is_workspace_admin(workspace_id)
-    or (department_id is not null and private.is_department_member(department_id))
+    or private.is_department_member(department_id)
   ) with check (
     private.is_workspace_admin(workspace_id)
-    or (department_id is not null and private.is_department_member(department_id))
+    or private.is_department_member(department_id)
   );
 
 create policy request_assignees_read on public.request_assignees
@@ -156,13 +148,13 @@ create policy request_assignees_modify on public.request_assignees
     exists (
       select 1 from public.requests r
       where r.id = request_assignees.request_id
-        and (private.is_workspace_admin(r.workspace_id) or (r.department_id is not null and private.is_department_member(r.department_id)))
+        and (private.is_workspace_admin(r.workspace_id) or private.is_department_member(r.department_id))
     )
   ) with check (
     exists (
       select 1 from public.requests r
       where r.id = request_assignees.request_id
-        and (private.is_workspace_admin(r.workspace_id) or (r.department_id is not null and private.is_department_member(r.department_id)))
+        and (private.is_workspace_admin(r.workspace_id) or private.is_department_member(r.department_id))
     )
   );
 

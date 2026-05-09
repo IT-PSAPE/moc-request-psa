@@ -51,8 +51,8 @@ function AppShellLayout() {
 
 const router = createBrowserRouter([
     // Public — no auth, no AppShell
-    { path: routes.submit, element: <PublicSubmitScreen /> },
     { path: routes.submitSuccess, element: <PublicSubmitSuccessScreen /> },
+    { path: routes.submit, element: <PublicSubmitScreen /> },
     { path: routes.track, element: <PublicTrackScreen /> },
     { path: routes.privacy, element: <PublicPrivacyScreen /> },
     { path: routes.terms, element: <PublicTermsScreen /> },

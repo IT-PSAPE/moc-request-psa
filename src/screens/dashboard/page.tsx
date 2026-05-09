@@ -33,7 +33,7 @@ export function DashboardScreen() {
         return state.activeRequests.filter(r => {
             if (!activeStatusSet.has(r.status)) return false
             if (showAll) return true
-            return r.departmentId !== null && myDeptIds.has(r.departmentId)
+            return myDeptIds.has(r.departmentId)
         })
     }, [state.activeRequests, showAll, myDeptIds, activeStatusSet])
 

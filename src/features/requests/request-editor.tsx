@@ -162,10 +162,11 @@ function DepartmentRow() {
         <MetaRow icon={<Building2 />} label="Department">
             <Select
                 style="ghost"
-                value={state.draft.departmentId ?? ''}
-                onChange={e => actions.updateField('departmentId', (e.target.value || null) as Request['departmentId'])}
+                value={state.draft.departmentId}
+                onChange={e => {
+                    if (e.target.value) actions.updateField('departmentId', e.target.value)
+                }}
             >
-                <option value="">— Unrouted —</option>
                 {departments.map(d => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
@@ -604,7 +605,6 @@ function Assignees() {
 
     const candidates = useMemo(() => {
         const active = members.filter(m => m.membership.status === 'active' && !assignedIds.has(m.profile.id))
-        if (!departmentId) return active
         return active.filter(m => m.departments.some(d => d.id === departmentId))
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [members, state.assignees, departmentId])

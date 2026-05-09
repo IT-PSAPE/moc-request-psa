@@ -6,7 +6,7 @@ MOC Request is a multi-workspace, request-intake platform. External requesters s
 
 | Path | Audience | What it does |
 | --- | --- | --- |
-| `/submit` | Public, no auth | 3-step wizard: pick a workspace → pick a category → fill in the form. Allocates a tracking ID. |
+| `/submit/:workspaceSlug` | Public, no auth | 2-step wizard locked to the workspace in the URL: pick a category → fill in the form. Allocates a tracking ID. There is no bare `/submit` — the slug is required, so every submission is workspace-scoped from the URL. |
 | `/track/:trackingId` | Public, no auth | Read-only status page. No comments or internal fields exposed. |
 | `/login`, `/signup` | Public | Sign-up creates a `pending` profile + workspace member entry. The user lands on `/pending` until approved. |
 | `/dashboard` | Workspace member | Active requests grouped by department. Admins see all departments; non-admins see only their own. |
@@ -16,7 +16,7 @@ MOC Request is a multi-workspace, request-intake platform. External requesters s
 | `/admin/departments` | Workspace admin | CRUD for departments. |
 | `/admin/categories` | Workspace admin | CRUD for categories with default-department routing + active flag. |
 | `/admin/settings` | Workspace admin | Edit workspace name + description. |
-| `/platform/workspaces` | Platform admin | Workspace list + Reset mock data + New workspace. |
+| `/platform/workspaces` | Platform admin | Workspace list + New workspace. |
 | `/platform/workspaces/new` | Platform admin | Create a workspace (auto-derives slug, seeds 3 default roles). |
 | `/platform/workspaces/:id` | Platform admin | Assign initial admin to a workspace from existing users. |
 
@@ -33,17 +33,17 @@ Pending and rejected statuses block sign-in into the workspace; the user keeps t
 ## Submission → triage → resolution
 
 ```
-   /submit (anon)
+   /submit/:workspaceSlug (anon)
       │
       ▼
-   workspace + category picked
+   workspace resolved from slug + category picked
       │
       ▼
    submitPublicRequest()
       ├── allocate 8-char Crockford-base32 tracking_id
       ├── insert with status='submitted', source='public_form'
-      ├── route to category.default_department_id (nullable)
-      └── emit activity_logs: 'created' (+ 'department_routed' if routed)
+      ├── route to category.default_department_id (required — submission rejected if missing)
+      └── emit activity_logs: 'created' + 'department_routed'
       │
       ▼
    Visible to:
@@ -79,4 +79,4 @@ Pending and rejected statuses block sign-in into the workspace; the user keeps t
 - vite-plugin-pwa for installable shell
 - React Compiler for auto-memoisation
 
-The mock layer + auth context are the only Phase-1-specific code. Everything else is portable to Phase 2 without changes.
+The data layer (`src/data/`) is a thin wrapper over `@supabase/supabase-js`. RLS policies in [`docs/phases/phase-09-rls-policies.sql`](./phases/phase-09-rls-policies.sql) enforce visibility; the client only filters server-side results.

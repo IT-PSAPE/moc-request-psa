@@ -62,5 +62,6 @@ create policy bug_reports_platform_modify on public.bug_reports
 create policy bug_reports_platform_delete on public.bug_reports
   for delete using (private.is_platform_admin());
 
-grant select, insert on public.bug_reports to authenticated;
+-- All four privileges go to authenticated; RLS gates who can actually
+-- update/delete (only platform admins per the policies above).
 grant select, insert, update, delete on public.bug_reports to authenticated;

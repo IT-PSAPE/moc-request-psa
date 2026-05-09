@@ -1,4 +1,4 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 import { mapBugReport, type BugReportRow } from './map-bug-report'
 import { BUG_REPORT_DESCRIPTION_MAX, type BugReport, type BugReportContext } from '@/types/bug-reports'
 
@@ -18,26 +18,27 @@ export async function submitBugReport(input: SubmitBugReportInput): Promise<BugR
         throw new Error(`Description must be ${BUG_REPORT_DESCRIPTION_MAX} characters or fewer`)
     }
 
-    const row: BugReportRow = {
-        id: crypto.randomUUID(),
-        reporter_id: input.reporterId,
-        reporter_name: input.reporterName,
-        reporter_email: input.reporterEmail,
-        workspace_id: input.workspaceId,
-        description: trimmed,
-        url: input.context.url,
-        user_agent: input.context.userAgent,
-        platform: input.context.platform,
-        language: input.context.language,
-        timezone: input.context.timezone,
-        viewport_width: input.context.viewportWidth,
-        viewport_height: input.context.viewportHeight,
-        screen_width: input.context.screenWidth,
-        screen_height: input.context.screenHeight,
-        device_pixel_ratio: input.context.devicePixelRatio,
-        status: 'new',
-        created_at: new Date().toISOString(),
-    }
-
-    return mapBugReport(mockStore<BugReportRow>('bug_reports').insert(row))
+    const { data, error } = await supabase
+        .from('bug_reports')
+        .insert({
+            reporter_id: input.reporterId,
+            reporter_name: input.reporterName,
+            reporter_email: input.reporterEmail,
+            workspace_id: input.workspaceId,
+            description: trimmed,
+            url: input.context.url,
+            user_agent: input.context.userAgent,
+            platform: input.context.platform,
+            language: input.context.language,
+            timezone: input.context.timezone,
+            viewport_width: input.context.viewportWidth,
+            viewport_height: input.context.viewportHeight,
+            screen_width: input.context.screenWidth,
+            screen_height: input.context.screenHeight,
+            device_pixel_ratio: input.context.devicePixelRatio,
+        })
+        .select('*')
+        .single<BugReportRow>()
+    if (error || !data) throw new Error(error?.message ?? 'Bug report insert failed')
+    return mapBugReport(data)
 }

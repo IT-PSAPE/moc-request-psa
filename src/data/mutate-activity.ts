@@ -1,4 +1,4 @@
-import { mockStore } from './store/mock-store'
+import { supabase } from '@/lib/supabase'
 
 export type ActivityAction =
     | 'created'
@@ -27,15 +27,23 @@ export type ActivityInput = {
     payload?: Record<string, unknown>
 }
 
-export function emitActivity(input: ActivityInput): ActivityLogRow {
-    const row: ActivityLogRow = {
-        id: crypto.randomUUID(),
-        request_id: input.requestId,
-        actor_id: input.actorId,
-        action: input.action,
-        payload: input.payload ?? {},
-        created_at: new Date().toISOString(),
-    }
-    mockStore<ActivityLogRow>('activity_logs').insert(row)
-    return row
+// Most activity (created, status_changed, priority_changed, category_changed,
+// department_routed) is emitted server-side by the requests_after_insert /
+// requests_after_update triggers in phase-07. The app keeps emitting:
+//   • assignee_added / assignee_removed  — written from mutate-requests
+//   • comment_posted                     — written from mutate-comments
+//   • field_updated                      — written from mutate-requests for freeform fields
+export async function emitActivity(input: ActivityInput): Promise<ActivityLogRow> {
+    const { data, error } = await supabase
+        .from('activity_logs')
+        .insert({
+            request_id: input.requestId,
+            actor_id: input.actorId,
+            action: input.action,
+            payload: input.payload ?? {},
+        })
+        .select('*')
+        .single<ActivityLogRow>()
+    if (error || !data) throw new Error(error?.message ?? 'Activity insert failed')
+    return data
 }

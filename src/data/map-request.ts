@@ -8,7 +8,7 @@ export type RequestRow = {
     tracking_id: string
     title: string
     category_id: string | null
-    department_id: string | null
+    department_id: string
     priority: Priority
     status: Status
     due_date: string | null

@@ -1,26 +1,11 @@
-import { mockStore } from '@/data/store/mock-store'
-import { type ProfileRow } from '@/data/map-profile'
-import { type DepartmentRow } from '@/data/map-department'
-import { type CategoryRow } from '@/data/map-category'
 import { statusLabel, priorityLabel } from '@/types/requests'
 import type { ResolvedActivityEntry, ActivityAction } from '@/types/activity'
 import type { Status, Priority } from '@/types/requests'
 
-function userName(userId: unknown): string | null {
-    if (typeof userId !== 'string') return null
-    const profile = mockStore<ProfileRow>('profiles').find(userId)
-    if (!profile) return null
-    return [profile.name, profile.surname].filter(Boolean).join(' ')
-}
-
-function departmentName(deptId: unknown): string | null {
-    if (typeof deptId !== 'string') return null
-    return mockStore<DepartmentRow>('departments').find(deptId)?.name ?? null
-}
-
-function categoryLabel(catId: unknown): string | null {
-    if (typeof catId !== 'string') return null
-    return mockStore<CategoryRow>('categories').find(catId)?.label ?? null
+export type ActivityLookups = {
+    userName: (id: string) => string | null
+    departmentName: (id: string) => string | null
+    categoryLabel: (id: string) => string | null
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -37,7 +22,11 @@ const FIELD_LABELS: Record<string, string> = {
     requested_by_email: 'requester email',
 }
 
-export function formatActivity(entry: ResolvedActivityEntry): string {
+function lookup(value: unknown, fn: (id: string) => string | null): string | null {
+    return typeof value === 'string' ? fn(value) : null
+}
+
+export function formatActivity(entry: ResolvedActivityEntry, lookups: ActivityLookups): string {
     const actor = entry.actorName ?? 'Anonymous'
     const action = entry.action as ActivityAction
     const p = entry.payload
@@ -58,22 +47,22 @@ export function formatActivity(entry: ResolvedActivityEntry): string {
             return `${actor} changed priority from ${from} to ${to}`
         }
         case 'category_changed': {
-            const from = categoryLabel(p.fromId) ?? 'Uncategorized'
-            const to = categoryLabel(p.toId) ?? 'Uncategorized'
+            const from = lookup(p.fromId, lookups.categoryLabel) ?? 'Uncategorized'
+            const to = lookup(p.toId, lookups.categoryLabel) ?? 'Uncategorized'
             return `${actor} changed category from ${from} to ${to}`
         }
         case 'department_routed': {
-            const from = departmentName(p.fromId) ?? 'Unrouted'
-            const to = departmentName(p.toId) ?? 'Unrouted'
-            return `${actor} routed from ${from} to ${to}`
+            const from = lookup(p.fromId, lookups.departmentName)
+            const to = lookup(p.toId, lookups.departmentName) ?? '—'
+            return from ? `${actor} re-routed from ${from} to ${to}` : `${actor} routed to ${to}`
         }
         case 'assignee_added': {
-            const who = userName(p.userId) ?? 'a member'
+            const who = lookup(p.userId, lookups.userName) ?? 'a member'
             const duty = typeof p.duty === 'string' ? ` as ${p.duty}` : ''
             return `${actor} assigned ${who}${duty}`
         }
         case 'assignee_removed': {
-            const who = userName(p.userId) ?? 'a member'
+            const who = lookup(p.userId, lookups.userName) ?? 'a member'
             return `${actor} unassigned ${who}`
         }
         case 'field_updated': {

@@ -1,6 +1,4 @@
-import { Link } from 'react-router-dom'
 import { PublicLayout } from '@/features/public-submit/public-layout'
-import { routes } from '@/screens/app-routes'
 
 export function PublicTermsScreen() {
     return (
@@ -22,9 +20,7 @@ export function PublicTermsScreen() {
                 </section>
 
                 <section className="space-y-2">
-                    <h2 className="label-md text-primary">If you submit a request via{' '}
-                        <Link to={`/${routes.submit}`} className="text-brand_secondary hover:underline">/submit</Link>
-                    </h2>
+                    <h2 className="label-md text-primary">If you submit a request</h2>
                     <ul className="list-disc space-y-1 pl-5">
                         <li>The information you enter must be accurate. Don't impersonate someone else and don't submit
                             content you don't have the right to share.</li>
@@ -73,8 +69,7 @@ export function PublicTermsScreen() {
                 <section className="space-y-2">
                     <h2 className="label-md text-primary">Availability</h2>
                     <p>
-                        The platform is currently in early development. The current build runs against local JSON mock
-                        data, and Phase 2 will move to a hosted database. We don't guarantee uptime, and the public
+                        The platform is currently in early development. We don't guarantee uptime, and the public
                         form may be unavailable during deployments.
                     </p>
                 </section>

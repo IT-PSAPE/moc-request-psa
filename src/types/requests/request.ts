@@ -10,7 +10,7 @@ export type Request = {
     categoryId: string | null
     categoryLabel: string | null
     categoryColor: string
-    departmentId: string | null
+    departmentId: string
     departmentName: string | null
     priority: Priority
     status: Status

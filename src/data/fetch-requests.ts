@@ -1,80 +1,73 @@
-import { mockStore } from './store/mock-store'
-import { getCurrentContext } from './store/current-context'
+import { supabase } from '@/lib/supabase'
 import { mapRequest, type RequestRow } from './map-request'
 import { type CategoryRow } from './map-category'
 import { type DepartmentRow } from './map-department'
 import type { Request, Status } from '@/types/requests'
 
-function resolveJoins(rows: RequestRow[]): Request[] {
-    const categoriesById = new Map<string, CategoryRow>()
-    for (const c of mockStore<CategoryRow>('categories').list()) categoriesById.set(c.id, c)
-    const departmentsById = new Map<string, DepartmentRow>()
-    for (const d of mockStore<DepartmentRow>('departments').list()) departmentsById.set(d.id, d)
+type RequestJoinRow = RequestRow & {
+    category: CategoryRow | null
+    department: DepartmentRow | null
+}
 
+const SELECT_WITH_JOINS = '*, category:categories(*), department:departments(*)'
+
+function shape(rows: RequestJoinRow[]): Request[] {
     return rows.map(row => mapRequest(row, {
-        category: row.category_id ? categoriesById.get(row.category_id) ?? null : null,
-        department: row.department_id ? departmentsById.get(row.department_id) ?? null : null,
+        category: row.category,
+        department: row.department,
     }))
 }
 
-function canSeeRequest(row: RequestRow, ctx: ReturnType<typeof getCurrentContext>): boolean {
-    if (!ctx.activeWorkspaceId) return false
-    if (row.workspace_id !== ctx.activeWorkspaceId) return false
-    if (ctx.isPlatformAdmin) return true
-    // Admins (can_manage_roles) see everything in their workspace.
-    if (ctx.workspaceRole?.canManageRoles) return true
-    // Members see requests routed to their departments, plus unrouted requests.
-    if (!row.department_id) return Boolean(ctx.workspaceRole?.canRead)
-    return ctx.departmentIds.includes(row.department_id)
-}
-
 export async function fetchRequests(): Promise<Request[]> {
-    const ctx = getCurrentContext()
-    const rows = mockStore<RequestRow>('requests')
-        .where(row => canSeeRequest(row, ctx) && row.status !== 'archived' && row.status !== 'rejected')
-        .sort(byDueDateAscNullsLast)
-    return resolveJoins(rows)
+    // RLS limits to in-scope rows. We exclude archived/rejected from the
+    // "active" view here — it's a UI filter, not a security one.
+    const { data, error } = await supabase
+        .from('requests')
+        .select(SELECT_WITH_JOINS)
+        .not('status', 'in', '("archived","rejected")')
+        .order('due_date', { ascending: true, nullsFirst: false })
+    if (error) throw new Error(error.message)
+    return shape((data ?? []) as unknown as RequestJoinRow[])
 }
 
 export async function fetchRequestsByDepartment(departmentId: string): Promise<Request[]> {
-    const ctx = getCurrentContext()
-    const rows = mockStore<RequestRow>('requests')
-        .where(row =>
-            canSeeRequest(row, ctx)
-            && row.department_id === departmentId
-            && row.status !== 'archived'
-            && row.status !== 'rejected',
-        )
-        .sort(byDueDateAscNullsLast)
-    return resolveJoins(rows)
+    const { data, error } = await supabase
+        .from('requests')
+        .select(SELECT_WITH_JOINS)
+        .eq('department_id', departmentId)
+        .not('status', 'in', '("archived","rejected")')
+        .order('due_date', { ascending: true, nullsFirst: false })
+    if (error) throw new Error(error.message)
+    return shape((data ?? []) as unknown as RequestJoinRow[])
 }
 
 export async function fetchArchivedRequests(): Promise<Request[]> {
-    const ctx = getCurrentContext()
-    const rows = mockStore<RequestRow>('requests')
-        .where(row => canSeeRequest(row, ctx) && row.status === 'archived')
-        .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-    return resolveJoins(rows)
+    const { data, error } = await supabase
+        .from('requests')
+        .select(SELECT_WITH_JOINS)
+        .eq('status', 'archived')
+        .order('updated_at', { ascending: false })
+    if (error) throw new Error(error.message)
+    return shape((data ?? []) as unknown as RequestJoinRow[])
 }
 
 export async function fetchRequestsByStatus(status: Status): Promise<Request[]> {
-    const ctx = getCurrentContext()
-    const rows = mockStore<RequestRow>('requests')
-        .where(row => canSeeRequest(row, ctx) && row.status === status)
-        .sort(byDueDateAscNullsLast)
-    return resolveJoins(rows)
+    const { data, error } = await supabase
+        .from('requests')
+        .select(SELECT_WITH_JOINS)
+        .eq('status', status)
+        .order('due_date', { ascending: true, nullsFirst: false })
+    if (error) throw new Error(error.message)
+    return shape((data ?? []) as unknown as RequestJoinRow[])
 }
 
 export async function fetchRequestById(id: string): Promise<Request | null> {
-    const ctx = getCurrentContext()
-    const row = mockStore<RequestRow>('requests').find(id)
-    if (!row || !canSeeRequest(row, ctx)) return null
-    return resolveJoins([row])[0]
-}
-
-function byDueDateAscNullsLast(a: RequestRow, b: RequestRow): number {
-    if (a.due_date === null && b.due_date === null) return 0
-    if (a.due_date === null) return 1
-    if (b.due_date === null) return -1
-    return a.due_date.localeCompare(b.due_date)
+    const { data, error } = await supabase
+        .from('requests')
+        .select(SELECT_WITH_JOINS)
+        .eq('id', id)
+        .maybeSingle()
+    if (error) throw new Error(error.message)
+    if (!data) return null
+    return shape([data as unknown as RequestJoinRow])[0]
 }
