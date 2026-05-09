@@ -21,7 +21,7 @@ type ResolvedWorkspace = { id: string; name: string; slug: string; description: 
 export function PublicSubmitScreen() {
     const navigate = useNavigate()
     const { workspaceSlug } = useParams<{ workspaceSlug: string }>()
-    const [resolving, setResolving] = useState(true)
+    const [resolving, setResolving] = useState<boolean>(() => Boolean(workspaceSlug))
     const [workspace, setWorkspace] = useState<ResolvedWorkspace | null>(null)
     const [step, setStep] = useState<Step>('select')
     const [categories, setCategories] = useState<Category[]>([])
@@ -32,11 +32,8 @@ export function PublicSubmitScreen() {
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
+        if (!workspaceSlug) return
         let active = true
-        if (!workspaceSlug) {
-            setResolving(false)
-            return () => { active = false }
-        }
         fetchWorkspaceBySlug(workspaceSlug).then(ws => {
             if (!active) return
             setWorkspace(ws)

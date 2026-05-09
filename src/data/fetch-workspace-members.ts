@@ -25,39 +25,50 @@ export type ResolvedMember = {
 type MemberJoinRow = WorkspaceMemberRow & {
     profile: ProfileRow | null
     role: WorkspaceRoleRow | null
-    department_members:
-        | (DepartmentMemberRow & { department: DepartmentRow | null })[]
-        | null
+}
+
+type DepartmentMemberJoinRow = DepartmentMemberRow & {
+    department: DepartmentRow | null
 }
 
 export async function fetchWorkspaceMembers(): Promise<ResolvedMember[]> {
     const ctx = getCurrentContext()
     if (!ctx.activeWorkspaceId) return []
 
-    const { data, error } = await supabase
+    // Step 1: workspace members + their profile + their workspace role.
+    const { data: memberData, error: memberError } = await supabase
         .from('workspace_members')
-        .select(`
-            *,
-            profile:profiles!workspace_members_user_id_fkey(*),
-            role:workspace_roles(*),
-            department_members!department_members_user_id_fkey(
-                *,
-                department:departments(*)
-            )
-        `)
+        .select('*, profile:profiles!workspace_members_user_id_fkey(*), role:workspace_roles(*)')
         .eq('workspace_id', ctx.activeWorkspaceId)
-    if (error) throw new Error(error.message)
+    if (memberError) throw new Error(memberError.message)
+    const memberRows = (memberData ?? []) as unknown as MemberJoinRow[]
+    if (memberRows.length === 0) return []
 
-    const rows = (data ?? []) as unknown as MemberJoinRow[]
-    return rows
+    // Step 2: department memberships for those users, scoped to this workspace's
+    // departments. PostgREST can't embed department_members from workspace_members
+    // (no direct FK — they only share user_id), so we fetch separately and join in
+    // memory.
+    const userIds = memberRows.map(m => m.user_id)
+    const { data: dmData, error: dmError } = await supabase
+        .from('department_members')
+        .select('*, department:departments!inner(*)')
+        .in('user_id', userIds)
+        .eq('department.workspace_id', ctx.activeWorkspaceId)
+    if (dmError) throw new Error(dmError.message)
+    const dmRows = (dmData ?? []) as unknown as DepartmentMemberJoinRow[]
+
+    const dmsByUser = new Map<string, DepartmentMembership[]>()
+    for (const dm of dmRows) {
+        if (!dm.department) continue
+        const list = dmsByUser.get(dm.user_id) ?? []
+        list.push({ department: mapDepartment(dm.department), role: dm.role })
+        dmsByUser.set(dm.user_id, list)
+    }
+
+    return memberRows
         .map(row => {
             if (!row.profile) return null
-            const departmentMemberships: DepartmentMembership[] = []
-            for (const dm of row.department_members ?? []) {
-                if (!dm.department) continue
-                if (dm.department.workspace_id !== row.workspace_id) continue
-                departmentMemberships.push({ department: mapDepartment(dm.department), role: dm.role })
-            }
+            const departmentMemberships = dmsByUser.get(row.user_id) ?? []
             return {
                 membership: mapWorkspaceMember(row),
                 profile: mapProfile(row.profile),

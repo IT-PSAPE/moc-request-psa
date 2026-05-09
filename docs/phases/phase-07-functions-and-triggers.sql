@@ -53,9 +53,13 @@ $$;
 
 -- Auto-emit 'created' and 'department_routed' on insert. Every request is routed
 -- at submit time (department_id is NOT NULL), so the routing log is unconditional.
+-- SECURITY DEFINER so the trigger's writes to activity_logs aren't subject to the
+-- caller's RLS — these emits are server-authoritative.
 create or replace function public.requests_after_insert()
 returns trigger
 language plpgsql
+security definer
+set search_path = public, pg_temp
 as $$
 begin
   insert into public.activity_logs (request_id, actor_id, action, payload)
@@ -84,9 +88,12 @@ create trigger trg_requests_after_insert
   for each row execute procedure public.requests_after_insert();
 
 -- Status / priority / department / category change → activity_logs.
+-- SECURITY DEFINER for the same reason as requests_after_insert above.
 create or replace function public.requests_after_update()
 returns trigger
 language plpgsql
+security definer
+set search_path = public, pg_temp
 as $$
 begin
   if old.status is distinct from new.status then

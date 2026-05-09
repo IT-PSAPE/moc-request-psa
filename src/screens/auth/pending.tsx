@@ -8,9 +8,20 @@ import { routes } from '@/screens/app-routes'
 import { AuthLayout } from './auth-layout'
 
 export function PendingScreen() {
-    const { state: { profile, memberships }, actions: { signOut } } = useAuth()
+    const { state: { profile, memberships, activeMembership }, actions: { signOut, refresh } } = useAuth()
     const navigate = useNavigate()
     const [pendingWorkspace, setPendingWorkspace] = useState<Workspace | null>(null)
+    const [checking, setChecking] = useState(false)
+
+    // If the user already has an active membership (e.g. an admin approved them
+    // while they were sitting on this screen, or this page was reached by mistake),
+    // forward straight to the dashboard. /pending lives outside RequireActiveMembership,
+    // so this guard has to live here.
+    useEffect(() => {
+        if (activeMembership?.status === 'active') {
+            navigate(`/${routes.dashboard}`, { replace: true })
+        }
+    }, [activeMembership, navigate])
 
     useEffect(() => {
         let active = true
@@ -24,6 +35,15 @@ export function PendingScreen() {
         })
         return () => { active = false }
     }, [memberships])
+
+    async function handleCheckStatus() {
+        setChecking(true)
+        try {
+            await refresh()
+        } finally {
+            setChecking(false)
+        }
+    }
 
     async function handleSignOut() {
         await signOut()
@@ -39,9 +59,9 @@ export function PendingScreen() {
                     {pendingWorkspace ? ` of ${pendingWorkspace.name}` : ''} has been notified about your registration.
                     You'll get full access as soon as they approve you.
                 </p>
-                <p className="paragraph-xs text-quaternary">
-                    Try signing in again later to check your status.
-                </p>
+                <Button className="w-full" onClick={handleCheckStatus} disabled={checking}>
+                    {checking ? 'Checking…' : 'Check status'}
+                </Button>
                 <Button variant="secondary" className="w-full" onClick={handleSignOut}>
                     Sign out
                 </Button>

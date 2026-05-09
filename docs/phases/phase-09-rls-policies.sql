@@ -174,3 +174,13 @@ create policy comments_delete on public.comments
 
 create policy activity_logs_read on public.activity_logs
   for select using (exists (select 1 from public.requests r where r.id = activity_logs.request_id));
+
+-- Client-side emits (assignee_added, assignee_removed, comment_posted,
+-- field_updated) come from mutate-activity.ts. The actor must be writing as
+-- themselves and must have access to the underlying request. Server-authoritative
+-- emits from the requests_after_* triggers bypass this via SECURITY DEFINER.
+create policy activity_logs_insert on public.activity_logs
+  for insert with check (
+    actor_id = auth.uid()
+    and exists (select 1 from public.requests r where r.id = activity_logs.request_id)
+  );

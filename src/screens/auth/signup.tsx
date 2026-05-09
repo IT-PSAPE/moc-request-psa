@@ -18,7 +18,7 @@ export function SignupScreen() {
     const { workspaceSlug } = useParams<{ workspaceSlug: string }>()
     const navigate = useNavigate()
 
-    const [resolving, setResolving] = useState(true)
+    const [resolving, setResolving] = useState<boolean>(() => Boolean(workspaceSlug))
     const [workspace, setWorkspace] = useState<ResolvedWorkspace | null>(null)
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
@@ -29,11 +29,8 @@ export function SignupScreen() {
     const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
 
     useEffect(() => {
+        if (!workspaceSlug) return
         let active = true
-        if (!workspaceSlug) {
-            setResolving(false)
-            return () => { active = false }
-        }
         fetchWorkspaceBySlug(workspaceSlug).then(ws => {
             if (!active) return
             setWorkspace(ws)
@@ -92,6 +89,27 @@ export function SignupScreen() {
                     <p className="paragraph-sm text-tertiary">
                         The sign-up link you followed doesn't match a known workspace. Double-check the link your team
                         shared with you, or get in touch with them for the correct URL.
+                    </p>
+                    <Link to={`/${routes.login}`} className="paragraph-sm text-brand_secondary hover:underline">
+                        Back to sign in
+                    </Link>
+                </div>
+            </AuthLayout>
+        )
+    }
+
+    if (submittedEmail) {
+        return (
+            <AuthLayout>
+                <div className="space-y-3">
+                    <p className="paragraph-xs text-quaternary tracking-wide uppercase">
+                        Joining {workspace.name}
+                    </p>
+                    <h2 className="title-h6">Check your email</h2>
+                    <p className="paragraph-sm text-tertiary">
+                        We sent a confirmation link to <span className="text-primary">{submittedEmail}</span>. Open it to
+                        finish creating your account, then sign in. An admin of {workspace.name} will then review your
+                        request and approve your access.
                     </p>
                     <Link to={`/${routes.login}`} className="paragraph-sm text-brand_secondary hover:underline">
                         Back to sign in

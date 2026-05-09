@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Bug, Send, X } from 'lucide-react'
 import { Modal } from '@/components/overlays/modal'
 import { Button } from '@/components/controls/button'
@@ -24,12 +24,13 @@ export function ReportBugModal({ open, onOpenChange }: ReportBugModalProps) {
     const [description, setDescription] = useState('')
     const [busy, setBusy] = useState(false)
 
-    useEffect(() => {
-        if (!open) {
+    function handleOpenChange(next: boolean) {
+        if (!next) {
             setDescription('')
             setBusy(false)
         }
-    }, [open])
+        onOpenChange(next)
+    }
 
     const remaining = BUG_REPORT_DESCRIPTION_MAX - description.length
     const overLimit = remaining < 0
@@ -53,7 +54,7 @@ export function ReportBugModal({ open, onOpenChange }: ReportBugModalProps) {
                 description: 'Thanks — we read every one of these.',
                 variant: 'success',
             })
-            onOpenChange(false)
+            handleOpenChange(false)
         } catch (err) {
             toast({ title: 'Could not send report', description: getErrorMessage(err, 'Try again.'), variant: 'error' })
             setBusy(false)
@@ -61,7 +62,7 @@ export function ReportBugModal({ open, onOpenChange }: ReportBugModalProps) {
     }
 
     return (
-        <Modal.Root open={open} onOpenChange={onOpenChange}>
+        <Modal.Root open={open} onOpenChange={handleOpenChange}>
             <Modal.Portal>
                 <Modal.Backdrop />
                 <Modal.Positioner>
