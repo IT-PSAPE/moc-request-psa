@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
-import { createCategory, updateCategory } from '@/data/mutate-categories'
+import { updateCategory } from '@/data/mutate-categories'
 import type { Category } from '@/types/categories'
 
 export type CategoryDraft = {
@@ -9,7 +9,6 @@ export type CategoryDraft = {
     defaultDepartmentId: string | null
     isActive: boolean
     sortOrder: number
-    isNew: boolean
 }
 
 type EditorState = {
@@ -22,9 +21,7 @@ type EditorState = {
 type Action =
     | { type: 'RESET'; categories: Category[] }
     | { type: 'UPDATE_FIELD'; id: string; patch: Partial<CategoryDraft> }
-    | { type: 'ADD_ROW'; row: CategoryDraft }
     | { type: 'SAVE_START' }
-    | { type: 'SAVE_SUCCESS'; categories: Category[] }
     | { type: 'SAVE_ERROR'; error: string }
 
 function toDraft(c: Category): CategoryDraft {
@@ -35,7 +32,6 @@ function toDraft(c: Category): CategoryDraft {
         defaultDepartmentId: c.defaultDepartmentId,
         isActive: c.isActive,
         sortOrder: c.sortOrder,
-        isNew: false,
     }
 }
 
@@ -53,17 +49,8 @@ function reducer(state: EditorState, action: Action): EditorState {
                 ...state,
                 draft: state.draft.map(row => (row.id === action.id ? { ...row, ...action.patch } : row)),
             }
-        case 'ADD_ROW':
-            return { ...state, draft: [...state.draft, action.row] }
         case 'SAVE_START':
             return { ...state, isSaving: true, error: null }
-        case 'SAVE_SUCCESS':
-            return {
-                original: action.categories,
-                draft: action.categories.map(toDraft),
-                isSaving: false,
-                error: null,
-            }
         case 'SAVE_ERROR':
             return { ...state, isSaving: false, error: action.error }
     }
@@ -82,11 +69,9 @@ export function useCategoriesEditor(categories: Category[]) {
     }, [categories])
 
     const isDirty = useMemo(() => {
-        if (state.draft.length !== state.original.length) return true
         for (const row of state.draft) {
-            if (row.isNew) return true
             const orig = state.original.find(c => c.id === row.id)
-            if (!orig) return true
+            if (!orig) continue
             if (orig.label !== row.label.trim()) return true
             if (orig.colorKey !== row.colorKey) return true
             if (orig.defaultDepartmentId !== row.defaultDepartmentId) return true
@@ -99,21 +84,6 @@ export function useCategoriesEditor(categories: Category[]) {
         dispatch({ type: 'UPDATE_FIELD', id, patch })
     }, [])
 
-    const addRow = useCallback(() => {
-        dispatch({
-            type: 'ADD_ROW',
-            row: {
-                id: crypto.randomUUID(),
-                label: '',
-                colorKey: 'blue',
-                defaultDepartmentId: null,
-                isActive: true,
-                sortOrder: state.draft.length,
-                isNew: true,
-            },
-        })
-    }, [state.draft.length])
-
     const save = useCallback(async (refresh: () => Promise<void>) => {
         dispatch({ type: 'SAVE_START' })
         try {
@@ -123,31 +93,22 @@ export function useCategoriesEditor(categories: Category[]) {
                     throw new Error('Every category needs a label')
                 }
                 if (!row.defaultDepartmentId) {
-                    throw new Error(`Category "${trimmed || 'unnamed'}" needs a routing department`)
+                    throw new Error(`Category "${trimmed}" needs a routing department`)
                 }
-                if (row.isNew) {
-                    await createCategory({
+                const orig = state.original.find(c => c.id === row.id)
+                if (!orig) continue
+                const changed =
+                    orig.label !== trimmed ||
+                    orig.colorKey !== row.colorKey ||
+                    orig.defaultDepartmentId !== row.defaultDepartmentId ||
+                    orig.isActive !== row.isActive
+                if (changed) {
+                    await updateCategory(row.id, {
                         label: trimmed,
                         colorKey: row.colorKey,
                         defaultDepartmentId: row.defaultDepartmentId,
                         isActive: row.isActive,
                     })
-                } else {
-                    const orig = state.original.find(c => c.id === row.id)
-                    if (!orig) continue
-                    const changed =
-                        orig.label !== trimmed ||
-                        orig.colorKey !== row.colorKey ||
-                        orig.defaultDepartmentId !== row.defaultDepartmentId ||
-                        orig.isActive !== row.isActive
-                    if (changed) {
-                        await updateCategory(row.id, {
-                            label: trimmed,
-                            colorKey: row.colorKey,
-                            defaultDepartmentId: row.defaultDepartmentId,
-                            isActive: row.isActive,
-                        })
-                    }
                 }
             }
             await refresh()
@@ -168,6 +129,6 @@ export function useCategoriesEditor(categories: Category[]) {
             isSaving: state.isSaving,
             error: state.error,
         },
-        actions: { updateField, addRow, save, reset },
+        actions: { updateField, save, reset },
     }
 }

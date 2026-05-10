@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import { Drawer } from '@/components/overlays/drawer'
 import { Button } from '@/components/controls/button'
-import { Label, Paragraph } from '@/components/display/text'
+import { Label } from '@/components/display/text'
 import { Spinner } from '@/components/feedback/spinner'
 import { fetchAssigneesForRequest } from '@/data/fetch-assignees'
 import { RequestPropertiesView } from './request-properties-view'
@@ -37,25 +37,22 @@ export function RequestDrawer({ request, onClose }: RequestDrawerProps) {
             <Drawer.Panel className="!max-w-lg">
                 <Drawer.Header>
                     <Label.lg>{request.title}</Label.lg>
-                    <Paragraph.xs className="text-quaternary font-mono">#{request.trackingId}</Paragraph.xs>
                 </Drawer.Header>
 
-                <Drawer.Content>
-                    <div className="space-y-6 p-4">
-                        <RequestPropertiesView.Meta request={request} />
-                        <RequestPropertiesView.FiveW request={request} />
-                        <RequestPropertiesView.Notes request={request} />
-                        {assignees === null ? (
-                            <div className="py-4 flex justify-center"><Spinner size="md" /></div>
-                        ) : (
-                            <RequestPropertiesView.Assignees assignees={assignees} />
-                        )}
-                    </div>
+                <Drawer.Content className="space-y-6">
+                    <RequestPropertiesView.Meta request={request} />
+                    <RequestPropertiesView.FiveW request={request} />
+                    <RequestPropertiesView.Notes request={request} />
+                    {assignees === null ? (
+                        <div className="py-4 flex justify-center"><Spinner size="md" /></div>
+                    ) : (
+                        <RequestPropertiesView.Assignees assignees={assignees} />
+                    )}
                 </Drawer.Content>
 
                 <Drawer.Footer>
-                    <Button variant="secondary" onClick={onClose}>Close</Button>
-                    <Button icon={<ExternalLink />} iconPosition="trailing" onClick={openDetail}>
+                    <Button variant="secondary" onClick={onClose} className="flex-1">Close</Button>
+                    <Button icon={<ExternalLink />} iconPosition="trailing" onClick={openDetail} className="flex-1">
                         Open detail
                     </Button>
                 </Drawer.Footer>

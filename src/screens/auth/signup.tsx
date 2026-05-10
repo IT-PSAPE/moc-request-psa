@@ -31,11 +31,17 @@ export function SignupScreen() {
     useEffect(() => {
         if (!workspaceSlug) return
         let active = true
-        fetchWorkspaceBySlug(workspaceSlug).then(ws => {
-            if (!active) return
-            setWorkspace(ws)
-            setResolving(false)
-        })
+        fetchWorkspaceBySlug(workspaceSlug)
+            .then(ws => {
+                if (!active) return
+                setWorkspace(ws)
+                setResolving(false)
+            })
+            .catch(() => {
+                if (!active) return
+                setWorkspace(null)
+                setResolving(false)
+            })
         return () => { active = false }
     }, [workspaceSlug])
 

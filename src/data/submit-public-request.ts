@@ -15,6 +15,7 @@ export type PublicSubmissionInput = {
     where: string
     why: string
     how: string
+    notes: string
 }
 
 export type PublicSubmissionResult = {
@@ -37,6 +38,7 @@ export async function submitPublicRequest(input: PublicSubmissionInput): Promise
         where: input.where.trim(),
         why: input.why.trim(),
         how: input.how.trim(),
+        notes: input.notes.trim(),
     }
 
     const { data, error } = await supabase.rpc('submit_public_request', {

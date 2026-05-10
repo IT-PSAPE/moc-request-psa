@@ -71,24 +71,24 @@ export function AdminMembersScreen() {
                 </p>
             </div>
 
+            {pendingCount > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setActiveTab(ALL_TAB)}
+                    className="w-full text-left rounded-lg border border-warning bg-warning_subtle px-3 py-2 hover:bg-warning_subtle_hover transition-colors cursor-pointer"
+                >
+                    <p className="paragraph-sm text-warning font-medium">
+                        {pendingCount} pending sign-up{pendingCount > 1 ? 's' : ''} awaiting your review
+                    </p>
+                </button>
+            )}
+
             <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
                 <Tabs.List>
-                    <Tabs.Tab value={ALL_TAB}>
-                        All members
-                        <span className="ml-1.5 paragraph-xs text-quaternary">{members.length}</span>
-                        {pendingCount > 0 && (
-                            <span className="ml-1.5 paragraph-xs text-warning font-medium">{pendingCount} pending</span>
-                        )}
-                    </Tabs.Tab>
-                    {deptState.allDepartments.map(d => {
-                        const count = members.filter(m => m.departments.some(x => x.id === d.id)).length
-                        return (
-                            <Tabs.Tab key={d.id} value={d.id}>
-                                {d.name}
-                                <span className="ml-1.5 paragraph-xs text-quaternary">{count}</span>
-                            </Tabs.Tab>
-                        )
-                    })}
+                    <Tabs.Tab value={ALL_TAB}>All members</Tabs.Tab>
+                    {deptState.allDepartments.map(d => (
+                        <Tabs.Tab key={d.id} value={d.id}>{d.name}</Tabs.Tab>
+                    ))}
                 </Tabs.List>
 
                 <Tabs.Panels className="pt-5">

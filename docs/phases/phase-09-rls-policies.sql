@@ -27,11 +27,14 @@ create policy profiles_self_read on public.profiles
 create policy profiles_self_update on public.profiles
   for update using (id = auth.uid()) with check (id = auth.uid());
 
+-- Pending members need to see their workspace's name on the /pending screen,
+-- so SELECT is allowed for any-status membership. WRITE policies still require
+-- platform admin (workspaces_modify), so this only widens visibility.
 create policy workspaces_read on public.workspaces
   for select using (
     private.is_platform_admin() or exists (
       select 1 from public.workspace_members
-      where workspace_id = workspaces.id and user_id = auth.uid() and status = 'active'
+      where workspace_id = workspaces.id and user_id = auth.uid()
     )
   );
 

@@ -81,9 +81,11 @@ export function AdminSettingsScreen() {
                     <Input value={workspace.slug} disabled />
                     <p className="paragraph-xs text-quaternary">Workspace slugs are managed by the platform.</p>
                 </div>
-                <Button type="submit" icon={<Save />} disabled={!isDirty || busy} className="w-full md:w-auto">
-                    {busy ? 'Saving…' : 'Save changes'}
-                </Button>
+                {isDirty && (
+                    <Button type="submit" icon={<Save />} disabled={busy} className="w-full md:w-auto">
+                        {busy ? 'Saving…' : 'Save changes'}
+                    </Button>
+                )}
             </form>
         </div>
     )

@@ -120,7 +120,7 @@ type OverlayContentProps = HTMLAttributes<HTMLDivElement>
 
 export function OverlayContent({ children, className, ...props }: OverlayContentProps) {
     return (
-        <div className={cn('min-h-0 flex flex-1 flex-col overflow-y-auto', className)} {...props}>
+        <div className={cn('min-h-0 flex flex-1 flex-col overflow-y-auto p-4', className)} {...props}>
             {children}
         </div>
     )

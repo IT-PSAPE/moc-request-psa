@@ -13,7 +13,7 @@ type PublicLayoutProps = {
 
 export function PublicLayout({ children, eyebrow, title, subtitle }: PublicLayoutProps) {
     return (
-        <div className="flex min-h-dvh flex-col bg-secondary">
+        <div className="flex min-h-dvh flex-col bg-primary">
             <PublicHeader />
             <main className="flex-1 px-4 py-10 md:py-14">
                 <div className="mx-auto w-full max-w-3xl space-y-8">

@@ -6,10 +6,10 @@ import { Badge } from '@/components/display/badge'
 import { Button } from '@/components/controls/button'
 import { Dropdown } from '@/components/overlays/dropdown'
 import { Input } from '@/components/form/input'
+import { Textarea } from '@/components/form/textarea'
 import { Label, Paragraph } from '@/components/display/text'
 import { MetaRow } from '@/components/display/meta-row'
 import { Modal } from '@/components/overlays/modal'
-import { Select } from '@/components/form/select'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
 import { fetchCategoriesForCurrentWorkspace } from '@/data/fetch-categories'
@@ -130,18 +130,27 @@ function CategoryRow() {
         return () => { active = false }
     }, [])
 
+    const selected = categories.find(c => c.id === state.draft.categoryId) ?? null
+    const triggerLabel = selected?.label ?? state.draft.categoryLabel ?? 'Uncategorized'
+    const triggerColor = badgeColor(selected?.colorKey ?? state.draft.categoryColor)
+
     return (
         <MetaRow icon={<Tag />} label="Category">
-            <Select
-                style="ghost"
-                value={state.draft.categoryId ?? ''}
-                onChange={e => actions.updateField('categoryId', (e.target.value || null) as Request['categoryId'])}
-            >
-                <option value="">— None —</option>
-                {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                ))}
-            </Select>
+            <Dropdown.Root placement="bottom">
+                <Dropdown.Trigger>
+                    <Badge label={triggerLabel} icon={<Tag />} color={triggerColor} className="cursor-pointer" />
+                </Dropdown.Trigger>
+                <Dropdown.Panel>
+                    <Dropdown.Item onSelect={() => actions.updateField('categoryId', null as Request['categoryId'])} className="px-1">
+                        <Badge label="Uncategorized" icon={<Tag />} color="gray" />
+                    </Dropdown.Item>
+                    {categories.map(c => (
+                        <Dropdown.Item key={c.id} onSelect={() => actions.updateField('categoryId', c.id as Request['categoryId'])} className="px-1">
+                            <Badge label={c.label} icon={<Tag />} color={badgeColor(c.colorKey)} />
+                        </Dropdown.Item>
+                    ))}
+                </Dropdown.Panel>
+            </Dropdown.Root>
         </MetaRow>
     )
 }
@@ -158,19 +167,24 @@ function DepartmentRow() {
         return () => { active = false }
     }, [])
 
+    const selected = departments.find(d => d.id === state.draft.departmentId) ?? null
+    const triggerLabel = selected?.name ?? state.draft.departmentName ?? 'Department'
+    const triggerColor = badgeColor(selected?.colorKey)
+
     return (
         <MetaRow icon={<Building2 />} label="Department">
-            <Select
-                style="ghost"
-                value={state.draft.departmentId}
-                onChange={e => {
-                    if (e.target.value) actions.updateField('departmentId', e.target.value)
-                }}
-            >
-                {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-            </Select>
+            <Dropdown.Root placement="bottom">
+                <Dropdown.Trigger>
+                    <Badge label={triggerLabel} icon={<Building2 />} color={triggerColor} className="cursor-pointer" />
+                </Dropdown.Trigger>
+                <Dropdown.Panel>
+                    {departments.map(d => (
+                        <Dropdown.Item key={d.id} onSelect={() => actions.updateField('departmentId', d.id)} className="px-1">
+                            <Badge label={d.name} icon={<Building2 />} color={badgeColor(d.colorKey)} />
+                        </Dropdown.Item>
+                    ))}
+                </Dropdown.Panel>
+            </Dropdown.Root>
         </MetaRow>
     )
 }
@@ -192,21 +206,6 @@ function DueDateRow() {
     )
 }
 
-function RequestedByRow() {
-    const { state, actions } = useRequestEditor()
-    return (
-        <MetaRow icon={<User className="size-4" />} label="Requested by">
-            <Input
-                value={state.draft.requestedByName}
-                onChange={e => actions.updateField('requestedByName', e.target.value)}
-                placeholder="Requester name"
-                className="max-w-48"
-                style="ghost"
-            />
-        </MetaRow>
-    )
-}
-
 function MetaFields() {
     const { state } = useRequestEditor()
     return (
@@ -220,7 +219,10 @@ function MetaFields() {
             <CategoryRow />
             <DepartmentRow />
             <DueDateRow />
-            <RequestedByRow />
+
+            <MetaRow icon={<User className="size-4" />} label="Requested by">
+                <Paragraph.sm>{state.draft.requestedByName || 'No requester'}</Paragraph.sm>
+            </MetaRow>
 
             <MetaRow icon={<Clock className="size-4" />} label="Created">
                 <Paragraph.sm>{formatRequestDate(state.draft.createdAt)}</Paragraph.sm>
@@ -244,11 +246,11 @@ function FiveW({ className }: { className?: string }) {
                 {fiveWFields.map(({ key, label }) => (
                     <div key={key} className="space-y-1">
                         <Label.sm className="text-primary">{label}</Label.sm>
-                        <Input
+                        <Textarea
                             value={state.draft[key] as string}
                             onChange={e => actions.updateField(key, e.target.value as Request[typeof key])}
-                            style="outline"
                             placeholder={`${label}…`}
+                            rows={2}
                         />
                     </div>
                 ))}
@@ -264,11 +266,11 @@ function Notes({ className }: { className?: string }) {
     return (
         <div className={cn(className)}>
             <Label.md className="block pb-3">Notes</Label.md>
-            <Input
+            <Textarea
                 value={state.draft.notes ?? ''}
                 onChange={e => actions.updateField('notes', e.target.value as Request['notes'])}
                 placeholder="Internal notes…"
-                style="outline"
+                rows={4}
             />
         </div>
     )
@@ -289,8 +291,10 @@ function SaveButton() {
         }
     }
 
+    if (!state.isDirty) return null
+
     return (
-        <Button icon={<Save />} onClick={handleSave} disabled={!state.isDirty || state.isSaving}>
+        <Button icon={<Save />} onClick={handleSave} disabled={state.isSaving}>
             {state.isSaving ? 'Saving…' : 'Save'}
         </Button>
     )

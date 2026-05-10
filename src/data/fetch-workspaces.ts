@@ -4,15 +4,6 @@ import { mapWorkspaceMember, type WorkspaceMemberRow } from './map-workspace-mem
 import { mapWorkspaceRole, type WorkspaceRoleRow } from './map-workspace-role'
 import type { Workspace, WorkspaceMember, WorkspaceRole } from '@/types/workspaces'
 
-export async function fetchPublicWorkspaces(): Promise<Pick<Workspace, 'id' | 'name' | 'slug'>[]> {
-    const { data, error } = await supabase
-        .from('workspaces')
-        .select('id, name, slug')
-        .order('name', { ascending: true })
-    if (error) throw new Error(error.message)
-    return (data ?? []) as Pick<Workspace, 'id' | 'name' | 'slug'>[]
-}
-
 export async function fetchWorkspaceById(id: string): Promise<Workspace | null> {
     const { data, error } = await supabase
         .from('workspaces')

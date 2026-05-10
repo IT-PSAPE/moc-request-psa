@@ -15,6 +15,7 @@ export function PublicTrackScreen() {
     const { trackingId } = useParams<{ trackingId: string }>()
     const [tracked, setTracked] = useState<PublicTrackedRequest | null>(null)
     const [loading, setLoading] = useState(true)
+    const [errored, setErrored] = useState(false)
 
     useEffect(() => {
         let active = true
@@ -22,11 +23,19 @@ export function PublicTrackScreen() {
             queueMicrotask(() => { if (active) setLoading(false) })
             return () => { active = false }
         }
-        fetchRequestByTrackingId(trackingId).then(result => {
-            if (!active) return
-            setTracked(result)
-            setLoading(false)
-        })
+        fetchRequestByTrackingId(trackingId)
+            .then(result => {
+                if (!active) return
+                setTracked(result)
+                setErrored(false)
+                setLoading(false)
+            })
+            .catch(() => {
+                if (!active) return
+                setTracked(null)
+                setErrored(true)
+                setLoading(false)
+            })
         return () => { active = false }
     }, [trackingId])
 
@@ -34,6 +43,18 @@ export function PublicTrackScreen() {
         return (
             <PublicLayout title="Request status">
                 <div className="flex justify-center py-8"><Spinner size="lg" /></div>
+            </PublicLayout>
+        )
+    }
+
+    if (errored) {
+        return (
+            <PublicLayout title="Couldn't load request" subtitle="Something went wrong looking up that tracking ID.">
+                <div className="space-y-4 text-center">
+                    <Paragraph.sm className="text-tertiary">
+                        Check your connection and try again. If it keeps failing, contact the team that shared this link.
+                    </Paragraph.sm>
+                </div>
             </PublicLayout>
         )
     }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Plus, Save } from 'lucide-react'
 import { Button } from '@/components/controls/button'
 import { Table } from '@/components/display/table'
@@ -7,10 +8,12 @@ import { Indicator } from '@/components/display/indicator'
 import { Paragraph } from '@/components/display/text'
 import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
+import { createCategory } from '@/data/mutate-categories'
 import { badgeColor } from '@/lib/color-keys'
 import { getErrorMessage } from '@/utils/get-error-message'
 import { useCategoriesEditor } from './use-categories-editor'
 import { useDirtyBlocker } from './use-dirty-blocker'
+import { CategoryCreateModal, type CategoryCreateValues } from './category-create-modal'
 import type { Category } from '@/types/categories'
 import type { Department } from '@/types/departments'
 
@@ -25,6 +28,7 @@ type CategoriesTableProps = {
 export function CategoriesTable({ categories, departments, onSaved }: CategoriesTableProps) {
     const { toast } = useFeedback()
     const { state, actions } = useCategoriesEditor(categories)
+    const [createOpen, setCreateOpen] = useState(false)
 
     useDirtyBlocker({
         enabled: state.isDirty,
@@ -41,6 +45,22 @@ export function CategoriesTable({ categories, departments, onSaved }: Categories
         }
     }
 
+    async function handleCreate(values: CategoryCreateValues) {
+        try {
+            await createCategory({
+                label: values.label,
+                colorKey: values.colorKey,
+                defaultDepartmentId: values.defaultDepartmentId,
+                isActive: values.isActive,
+            })
+            await onSaved()
+            toast({ title: 'Category created', variant: 'success' })
+        } catch (err) {
+            toast({ title: 'Create failed', description: getErrorMessage(err, 'Could not create.'), variant: 'error' })
+            throw err
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-end justify-between">
@@ -51,14 +71,23 @@ export function CategoriesTable({ categories, departments, onSaved }: Categories
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="secondary" icon={<Plus />} onClick={actions.addRow} disabled={state.isSaving}>
+                    <Button variant="secondary" icon={<Plus />} onClick={() => setCreateOpen(true)} disabled={state.isSaving}>
                         New category
                     </Button>
-                    <Button icon={<Save />} onClick={handleSave} disabled={!state.isDirty || state.isSaving}>
-                        {state.isSaving ? 'Saving…' : 'Save changes'}
-                    </Button>
+                    {state.isDirty && (
+                        <Button icon={<Save />} onClick={handleSave} disabled={state.isSaving}>
+                            {state.isSaving ? 'Saving…' : 'Save changes'}
+                        </Button>
+                    )}
                 </div>
             </div>
+
+            <CategoryCreateModal
+                open={createOpen}
+                onOpenChange={setCreateOpen}
+                departments={departments}
+                onSubmit={handleCreate}
+            />
 
             {state.error && (
                 <div className="rounded-lg border border-error bg-error_subtle p-3">

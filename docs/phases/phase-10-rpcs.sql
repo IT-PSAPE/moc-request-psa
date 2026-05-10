@@ -40,7 +40,8 @@ begin
     due_date,
     requested_by_name, requested_by_email,
     submitted_by_user_id, source,
-    who, what, when_text, where_text, why, how
+    who, what, when_text, where_text, why, how,
+    notes
   ) values (
     v_id,
     p_workspace_id,
@@ -60,7 +61,8 @@ begin
     coalesce(p_payload->>'when', ''),
     coalesce(p_payload->>'where', ''),
     coalesce(p_payload->>'why', ''),
-    coalesce(p_payload->>'how', '')
+    coalesce(p_payload->>'how', ''),
+    nullif(p_payload->>'notes', '')
   );
 
   return query select v_tracking_id, v_id;

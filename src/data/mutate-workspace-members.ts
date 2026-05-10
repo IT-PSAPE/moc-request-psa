@@ -5,16 +5,13 @@ import type { DepartmentRole } from '@/types/departments'
 import type { MemberStatus } from '@/types/profiles'
 
 export async function approveWorkspaceMember(membershipId: string, roleId: string): Promise<void> {
-    const ctx = getCurrentContext()
-    const { error } = await supabase
-        .from('workspace_members')
-        .update({
-            status: 'active',
-            workspace_role_id: roleId,
-            approved_at: new Date().toISOString(),
-            approved_by: ctx.userId,
-        })
-        .eq('id', membershipId)
+    // RPC sets approved_by = auth.uid() and approved_at = now() server-side, and
+    // re-checks is_workspace_admin OR is_platform_admin — so the caller can't
+    // forge approved_by even if they bypass the UI.
+    const { error } = await supabase.rpc('approve_workspace_member', {
+        p_membership_id: membershipId,
+        p_role_id: roleId,
+    })
     if (error) throw new Error(error.message)
 }
 

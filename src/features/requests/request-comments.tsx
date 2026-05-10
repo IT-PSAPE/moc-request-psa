@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/controls/button'
 import { Avatar } from '@/components/display/avatar'
 import { Label, Paragraph } from '@/components/display/text'
-import { Input } from '@/components/form/input'
+import { Textarea } from '@/components/form/textarea'
 import { Spinner } from '@/components/feedback/spinner'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
@@ -91,16 +91,18 @@ export function RequestComments({ requestId }: RequestCommentsProps) {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-                <Input
+            <form onSubmit={handleSubmit} className="mt-4 space-y-2">
+                <Textarea
                     placeholder="Add a comment…"
                     value={body}
                     onChange={e => setBody(e.target.value)}
-                    className="flex-1"
+                    rows={3}
                 />
-                <Button type="submit" disabled={!body.trim() || busy}>
-                    {busy ? 'Posting…' : 'Post'}
-                </Button>
+                <div className="flex justify-end">
+                    <Button type="submit" disabled={!body.trim() || busy}>
+                        {busy ? 'Posting…' : 'Post'}
+                    </Button>
+                </div>
             </form>
         </div>
     )

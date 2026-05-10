@@ -116,10 +116,10 @@ function AssigneesView({ assignees, className }: { assignees: ResolvedAssignee[]
         <div className={cn(className)}>
             <Label.md className="block pb-3">Assignees</Label.md>
             {assignees.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                     {assignees.map(a => (
-                        <div key={a.id} className="w-full flex items-center rounded-lg py-1 space-x-2">
-                            <Avatar.initials size="md" name={`${a.name[0] ?? ''}${a.surname?.[0] ?? ''}`.trim() || a.name[0]} />
+                        <div key={a.id} className="w-full flex items-center rounded-lg space-x-2">
+                            <Avatar.initials size="xs" name={`${a.name[0] ?? ''}${a.surname?.[0] ?? ''}`.trim() || a.name[0]} />
                             <div className="flex-1 min-w-0">
                                 <Label.sm>{[a.name, a.surname].filter(Boolean).join(' ')}</Label.sm>
                                 {a.duty && <Paragraph.xs className="text-quaternary truncate">{a.duty}</Paragraph.xs>}

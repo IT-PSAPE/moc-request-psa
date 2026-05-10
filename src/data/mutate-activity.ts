@@ -34,6 +34,10 @@ export type ActivityInput = {
 //   • comment_posted                     — written from mutate-comments
 //   • field_updated                      — written from mutate-requests for freeform fields
 export async function emitActivity(input: ActivityInput): Promise<ActivityLogRow> {
+    // RLS requires actor_id = auth.uid() on insert, so a null actorId is
+    // guaranteed to fail. Surface a readable error instead of the raw RLS bounce.
+    if (!input.actorId) throw new Error('You must be signed in to record activity')
+
     const { data, error } = await supabase
         .from('activity_logs')
         .insert({

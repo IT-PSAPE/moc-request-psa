@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Plus, Save } from 'lucide-react'
 import { Button } from '@/components/controls/button'
 import { Table } from '@/components/display/table'
@@ -6,10 +7,12 @@ import { Indicator } from '@/components/display/indicator'
 import { Paragraph } from '@/components/display/text'
 import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
+import { createDepartment } from '@/data/mutate-departments'
 import { badgeColor } from '@/lib/color-keys'
 import { getErrorMessage } from '@/utils/get-error-message'
 import { useDepartmentsEditor } from './use-departments-editor'
 import { useDirtyBlocker } from './use-dirty-blocker'
+import { DepartmentCreateModal, type DepartmentCreateValues } from './department-create-modal'
 import type { Department } from '@/types/departments'
 
 const COLOR_OPTIONS = ['blue', 'purple', 'green', 'orange', 'red', 'yellow', 'teal', 'pink', 'gray'] as const
@@ -22,6 +25,7 @@ type DepartmentsTableProps = {
 export function DepartmentsTable({ departments, onSaved }: DepartmentsTableProps) {
     const { toast } = useFeedback()
     const { state, actions } = useDepartmentsEditor(departments)
+    const [createOpen, setCreateOpen] = useState(false)
 
     useDirtyBlocker({
         enabled: state.isDirty,
@@ -38,6 +42,21 @@ export function DepartmentsTable({ departments, onSaved }: DepartmentsTableProps
         }
     }
 
+    async function handleCreate(values: DepartmentCreateValues) {
+        try {
+            await createDepartment({
+                name: values.name,
+                description: values.description || null,
+                colorKey: values.colorKey,
+            })
+            await onSaved()
+            toast({ title: 'Department created', variant: 'success' })
+        } catch (err) {
+            toast({ title: 'Create failed', description: getErrorMessage(err, 'Could not create.'), variant: 'error' })
+            throw err
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-end justify-between">
@@ -48,14 +67,22 @@ export function DepartmentsTable({ departments, onSaved }: DepartmentsTableProps
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="secondary" icon={<Plus />} onClick={actions.addRow} disabled={state.isSaving}>
+                    <Button variant="secondary" icon={<Plus />} onClick={() => setCreateOpen(true)} disabled={state.isSaving}>
                         New department
                     </Button>
-                    <Button icon={<Save />} onClick={handleSave} disabled={!state.isDirty || state.isSaving}>
-                        {state.isSaving ? 'Saving…' : 'Save changes'}
-                    </Button>
+                    {state.isDirty && (
+                        <Button icon={<Save />} onClick={handleSave} disabled={state.isSaving}>
+                            {state.isSaving ? 'Saving…' : 'Save changes'}
+                        </Button>
+                    )}
                 </div>
             </div>
+
+            <DepartmentCreateModal
+                open={createOpen}
+                onOpenChange={setCreateOpen}
+                onSubmit={handleCreate}
+            />
 
             {state.error && (
                 <div className="rounded-lg border border-error bg-error_subtle p-3">

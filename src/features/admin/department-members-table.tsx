@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Plus, Trash2, UserPlus, X } from 'lucide-react'
+import { Trash2, UserPlus } from 'lucide-react'
 import { Table } from '@/components/display/table'
 import { Avatar } from '@/components/display/avatar'
 import { Badge } from '@/components/display/badge'
 import { Label, Paragraph } from '@/components/display/text'
 import { Button } from '@/components/controls/button'
-import { Select } from '@/components/form/select'
 import { Dropdown } from '@/components/overlays/dropdown'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
@@ -16,6 +15,7 @@ import {
 } from '@/data/mutate-workspace-members'
 import { getErrorMessage } from '@/utils/get-error-message'
 import { MemberStatusSelect } from './member-status-select'
+import { DepartmentAddMembersModal, type AddMemberSelection } from './department-add-members-modal'
 import type { ResolvedMember } from '@/data/fetch-workspace-members'
 import type { Department, DepartmentRole } from '@/types/departments'
 import type { WorkspaceRole } from '@/types/workspaces'
@@ -37,7 +37,7 @@ function initialsOf(name: string, surname: string | null): string {
 export function DepartmentMembersTable({ department, members, activeMembers, roles, onChanged }: DepartmentMembersTableProps) {
     const { toast } = useFeedback()
     const confirm = useConfirm()
-    const [adding, setAdding] = useState(false)
+    const [addOpen, setAddOpen] = useState(false)
 
     const inDept = members.filter(m => m.departments.some(d => d.id === department.id))
     const inDeptIds = new Set(inDept.map(m => m.profile.id))
@@ -70,6 +70,19 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
         }
     }
 
+    async function handleAdd(selections: AddMemberSelection[]) {
+        const results = await Promise.allSettled(
+            selections.map(s => addDepartmentMember(department.id, s.userId, s.role))
+        )
+        const failed = results.filter(r => r.status === 'rejected').length
+        if (failed === 0) {
+            toast({ title: `${selections.length} member${selections.length > 1 ? 's' : ''} added`, variant: 'success' })
+        } else {
+            toast({ title: `${selections.length - failed} added, ${failed} failed`, variant: 'error' })
+        }
+        await onChanged()
+    }
+
     return (
         <div className="space-y-3">
             <div className="flex items-end justify-between px-1">
@@ -79,21 +92,18 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
                         <Paragraph.xs className="text-quaternary">{department.description}</Paragraph.xs>
                     )}
                 </div>
-                {!adding && (
-                    <Button icon={<UserPlus />} onClick={() => setAdding(true)}>
-                        Add member
-                    </Button>
-                )}
+                <Button icon={<UserPlus />} onClick={() => setAddOpen(true)}>
+                    Add members
+                </Button>
             </div>
 
-            {adding && (
-                <DepartmentMemberAddForm
-                    department={department}
-                    candidates={candidates}
-                    onCancel={() => setAdding(false)}
-                    onAdded={async () => { setAdding(false); await onChanged() }}
-                />
-            )}
+            <DepartmentAddMembersModal
+                open={addOpen}
+                onOpenChange={setAddOpen}
+                department={department}
+                candidates={candidates}
+                onSubmit={handleAdd}
+            />
 
             {inDept.length === 0 ? (
                 <div className="rounded-lg border border-secondary bg-primary px-6 py-8 text-center">
@@ -108,66 +118,6 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
                     onRemove={handleRemove}
                     onChanged={onChanged}
                 />
-            )}
-        </div>
-    )
-}
-
-type AddFormProps = {
-    department: Department
-    candidates: ResolvedMember[]
-    onCancel: () => void
-    onAdded: () => Promise<void>
-}
-
-function DepartmentMemberAddForm({ department, candidates, onCancel, onAdded }: AddFormProps) {
-    const { toast } = useFeedback()
-    const [candidateId, setCandidateId] = useState('')
-    const [candidateRole, setCandidateRole] = useState<DepartmentRole>('member')
-    const [busy, setBusy] = useState(false)
-
-    async function handleAdd() {
-        if (!candidateId) return
-        setBusy(true)
-        try {
-            await addDepartmentMember(department.id, candidateId, candidateRole)
-            toast({ title: 'Member added to department', variant: 'success' })
-            await onAdded()
-        } catch (err) {
-            toast({ title: 'Add failed', description: getErrorMessage(err, 'Could not add.'), variant: 'error' })
-        } finally {
-            setBusy(false)
-        }
-    }
-
-    return (
-        <div className="rounded-lg border border-secondary bg-primary p-3 space-y-3">
-            <div className="grid gap-3 md:grid-cols-[1fr_140px]">
-                <Select value={candidateId} onChange={e => setCandidateId(e.target.value)}>
-                    <option value="">Pick a workspace member…</option>
-                    {candidates.map(m => (
-                        <option key={m.profile.id} value={m.profile.id}>
-                            {[m.profile.name, m.profile.surname].filter(Boolean).join(' ')} · {m.profile.email}
-                        </option>
-                    ))}
-                </Select>
-                <Select value={candidateRole} onChange={e => setCandidateRole(e.target.value as DepartmentRole)}>
-                    <option value="member">Member</option>
-                    <option value="lead">Lead</option>
-                </Select>
-            </div>
-            <div className="flex gap-2 justify-end">
-                <Button variant="ghost" icon={<X />} onClick={onCancel} disabled={busy}>
-                    Cancel
-                </Button>
-                <Button icon={<Plus />} onClick={handleAdd} disabled={!candidateId || busy}>
-                    {busy ? 'Adding…' : 'Add to department'}
-                </Button>
-            </div>
-            {candidates.length === 0 && (
-                <Paragraph.xs className="text-quaternary">
-                    All active workspace members are already in this department.
-                </Paragraph.xs>
             )}
         </div>
     )

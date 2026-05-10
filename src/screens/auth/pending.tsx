@@ -30,9 +30,9 @@ export function PendingScreen() {
             setPendingWorkspace(null)
             return
         }
-        fetchWorkspaceById(pending.workspaceId).then(ws => {
-            if (active) setPendingWorkspace(ws)
-        })
+        fetchWorkspaceById(pending.workspaceId)
+            .then(ws => { if (active) setPendingWorkspace(ws) })
+            .catch(() => { if (active) setPendingWorkspace(null) })
         return () => { active = false }
     }, [memberships])
 

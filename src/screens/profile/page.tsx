@@ -96,9 +96,11 @@ export function ProfileScreen() {
                     </p>
                 </div>
 
-                <Button type="submit" icon={<Save />} disabled={!isDirty || busy} className="w-full md:w-auto">
-                    {busy ? 'Saving…' : 'Save changes'}
-                </Button>
+                {isDirty && (
+                    <Button type="submit" icon={<Save />} disabled={busy} className="w-full md:w-auto">
+                        {busy ? 'Saving…' : 'Save changes'}
+                    </Button>
+                )}
             </form>
         </div>
     )

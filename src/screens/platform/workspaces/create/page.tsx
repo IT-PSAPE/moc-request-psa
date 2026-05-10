@@ -35,7 +35,12 @@ export function PlatformCreateWorkspaceScreen() {
         e.preventDefault()
         setError('')
         if (!name.trim()) return setError('Name is required')
-        if (!slug.trim()) return setError('Slug is required')
+        const trimmedSlug = slug.trim()
+        if (!trimmedSlug) return setError('Slug is required')
+        // Mirror the DB CHECK on workspaces.slug: lowercase letters, digits, dashes only.
+        if (!/^[a-z0-9-]+$/.test(trimmedSlug)) {
+            return setError('Slug can only contain lowercase letters, numbers, and dashes')
+        }
 
         setBusy(true)
         try {
