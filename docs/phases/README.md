@@ -1,31 +1,65 @@
-# Phase 2 SQL migrations
+# SQL setup phases
 
-Run in numbered order against a fresh Supabase project. These files realise the schema documented in [../schema.md](../schema.md) and the public RPCs that mediate `/submit` and `/track`.
+These scripts are the canonical, idempotent setup for the project's Supabase
+database. Run them in numbered order against a fresh project — or against an
+existing one — and you'll end up with the schema documented in
+[../schema.md](../schema.md) and the public RPCs that mediate `/submit` and
+`/track`.
 
 | File | Purpose |
 | --- | --- |
-| `phase-00-nuke.sql` | DEV-ONLY. Drops every object created by later phases. |
-| `phase-01-foundations.sql` | Extensions (pgcrypto, uuid-ossp), private schema, all enums. |
-| `phase-02-platform-tables.sql` | profiles, workspaces, workspace_roles, workspace_members. |
-| `phase-03-department-tables.sql` | departments, department_members. |
-| `phase-04-category-tables.sql` | categories with default_department_id routing FK. |
-| `phase-05-request-tables.sql` | requests, request_assignees, comments, activity_logs. |
-| `phase-06-indexes.sql` | Composite indexes for common queries. |
-| `phase-07-functions-and-triggers.sql` | updated_at triggers, generate_tracking_id(), audit triggers on requests. |
-| `phase-08-private-helpers.sql` | RLS predicate helpers in the `private` schema. |
-| `phase-09-rls-policies.sql` | Row-level security on every table. |
-| `phase-10-rpcs.sql` | submit_public_request, lookup_request_by_tracking_id, approve_workspace_member. |
-| `phase-11-seed-data.sql` | Bare-minimum production seed: one workspace + its three system roles. No departments, categories, members, or requests — admins create those through the app. |
-| `phase-12-public-access.sql` | Anonymous role grants — anon only sees the two public RPCs. |
-| `phase-13-bug-reports.sql` | Cross-workspace bug-report table + RLS, routed to the platform team. |
-| `phase-14-auth-and-realtime.sql` | `handle_new_user` trigger on `auth.users` (auto-inserts the matching `public.profiles` row on sign-up) + adds `activity_logs`, `comments`, `requests` to the `supabase_realtime` publication. |
-| `phase-15-public-lookups.sql` | `lookup_workspace_by_slug` + `list_public_categories` RPCs granted to `anon`. Powers the workspace-scoped public URLs (`/submit/<slug>`, `/signup/<slug>`) without exposing the underlying tables. |
-| `nuke-everything.sql` | DEV-ONLY. Out-of-band project-wide nuke. Discovers and drops every user-created object in `public` and other non-Supabase schemas, deletes all `auth.users`, empties storage. Use when you want a true blank-slate reset before re-running the phases. |
+| `nuke-everything.sql` | DEV-ONLY. Discovers and drops every user-created object in `public` and other non-Supabase schemas, deletes all `auth.users`, empties storage. Use when you want a true blank-slate reset before re-running the phases. |
+| `phase-01-extensions-and-enums.sql` | Extensions (`pgcrypto`, `uuid-ossp`), the `private` schema, and every enum the project uses. |
+| `phase-02-tables.sql` | Every table in one file (`profiles`, `workspaces`, `workspace_roles`, `workspace_members`, `departments`, `department_members`, `categories`, `requests`, `request_assignees`, `comments`, `activity_logs`, `bug_reports`). Idempotent — see "Re-running" below. |
+| `phase-03-indexes.sql` | Composite / partial indexes for common queries. |
+| `phase-04-functions-and-triggers.sql` | RLS predicate helpers in `private`, the `updated_at` triggers, `generate_tracking_id()`, the request audit triggers, the `auth.users → public.profiles` signup hook, every public RPC, and the realtime publication memberships. |
+| `phase-05-rls-and-grants.sql` | Row-level security on every table + role grants for `anon` and `authenticated`. |
+| `phase-06-seed-data.sql` | One workspace + its three system roles. No departments, categories, members, or requests — admins create those through the app. |
 
-The frontend (`src/data/`) talks to Supabase directly via `@supabase/supabase-js`. Apply these phases once against a fresh Supabase project, then point the app at it via `.env.local` (see [`docs/README.md`](../README.md#quick-start)).
+The frontend (`src/data/`) talks to Supabase directly via
+`@supabase/supabase-js`. Apply these phases once against a fresh Supabase
+project, then point the app at it via `.env.local` (see
+[`docs/README.md`](../README.md#quick-start)).
+
+## Re-running the phases
+
+Every phase is **idempotent**: re-running it against a database that already
+has the objects is a no-op.
+
+`phase-02-tables.sql` goes further and reconciles _existing_ tables against
+the canonical spec:
+
+- Missing tables are created.
+- Missing columns are added with their canonical type / default / nullability.
+- Existing columns whose type, default, or nullability differ from the spec
+  are `ALTER`ed back into line. Reconciliation steps that would fail on
+  existing data (e.g. `SET NOT NULL` on a column with `NULL`s and no default)
+  raise a `NOTICE` and are skipped instead of aborting the whole script.
+- Missing PK / FK / `UNIQUE` / `CHECK` constraints are added under their
+  canonical Postgres-autogenerated names.
+
+If you want a true clean slate, run `nuke-everything.sql` first, then re-run
+phases 01–06 in order.
 
 ## Production-readiness notes
 
-- `requests.department_id` is `not null` (phase-05). Every request is routed at submit time; "unrouted" is not a state the data model allows. The on-delete behavior on `requests.department_id` and `categories.default_department_id` is `restrict`, so a department in use can't be deleted at the DB layer.
-- The `submit_public_request` RPC rejects categories whose `default_department_id` is null (phase-10). The frontend admin UI also blocks saving a category without a department.
-- After running phase-11, add the first platform-admin profile manually (set `is_platform_admin = true` on the row in `public.profiles` once that user signs up via Supabase Auth), then use `/platform/workspaces` to assign a workspace admin and let the admin populate departments / categories from the app.
+- `requests.department_id` is `not null` (phase-02). Every request is routed
+  at submit time; "unrouted" is not a state the data model allows. The
+  on-delete behavior on `requests.department_id` and
+  `categories.default_department_id` is `restrict`, so a department in use
+  can't be deleted at the DB layer.
+- The `submit_public_request` RPC rejects categories whose
+  `default_department_id` is null (phase-04). The frontend admin UI also
+  blocks saving a category without a department.
+- After running phase-06, add the first platform-admin profile manually (set
+  `is_platform_admin = true` on the row in `public.profiles` once that user
+  signs up via Supabase Auth), then use `/platform/workspaces` to assign a
+  workspace admin and let the admin populate departments / categories from
+  the app.
+- The `handle_new_user` trigger (phase-04) auto-creates a `public.profiles`
+  row whenever a Supabase Auth user is inserted, and — when sign-up
+  metadata includes `pending_workspace_id` (UUID) or
+  `pending_workspace_slug` (string) — also inserts a `pending` row in
+  `workspace_members` so the workspace admin sees the join request. Users
+  created without that metadata (e.g. directly from the Supabase dashboard)
+  get a profile but no membership; an admin grants membership via the app.

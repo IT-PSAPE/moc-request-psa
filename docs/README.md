@@ -10,7 +10,7 @@ This folder is the source of truth for the MOC Request app.
 
 ## How the app talks to the backend
 
-`src/data/*` are thin wrappers around `@supabase/supabase-js`. Every mutation is a direct `supabase.from(table).insert/update/delete` (or an RPC for the public submit / track flows), and every fetch is a `supabase.from(table).select(...)` honouring the RLS policies in [`docs/phases/phase-09-rls-policies.sql`](./phases/phase-09-rls-policies.sql). Auth is `supabase.auth` — sessions persist in localStorage automatically.
+`src/data/*` are thin wrappers around `@supabase/supabase-js`. Every mutation is a direct `supabase.from(table).insert/update/delete` (or an RPC for the public submit / track flows), and every fetch is a `supabase.from(table).select(...)` honouring the RLS policies in [`docs/phases/phase-05-rls-and-grants.sql`](./phases/phase-05-rls-and-grants.sql). Auth is `supabase.auth` — sessions persist in localStorage automatically.
 
 `src/data/store/current-context.ts` carries two ambient values that mutations need synchronously: the signed-in `userId` (set by `AuthProvider` from the auth state listener) and the `activeWorkspaceId` (set by `WorkspaceProvider` when the active workspace resolves). Everything else is enforced by Postgres / RLS.
 
@@ -26,7 +26,7 @@ This folder is the source of truth for the MOC Request app.
 
 ## Bootstrap (the very first user on a fresh project)
 
-1. Apply the phases. `phase-11-seed-data.sql` creates the initial `Acme Studio` workspace + its three system roles. No users exist yet.
+1. Apply the phases. `phase-06-seed-data.sql` creates the initial `Acme Studio` workspace + its three system roles. No users exist yet.
 2. Sign up the first user via `/signup`. The auth trigger creates their `profiles` row.
 3. In the Supabase dashboard SQL editor, mark them as a platform admin:
    ```sql
@@ -36,4 +36,4 @@ This folder is the source of truth for the MOC Request app.
 
 ## Resetting
 
-For a clean slate run [`docs/phases/nuke-everything.sql`](./phases/nuke-everything.sql), then re-run phases 01 → 14.
+For a clean slate run [`docs/phases/nuke-everything.sql`](./phases/nuke-everything.sql), then re-run phases 01 → 06.

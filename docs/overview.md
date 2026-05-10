@@ -79,4 +79,4 @@ Pending and rejected statuses block sign-in into the workspace; the user keeps t
 - vite-plugin-pwa for installable shell
 - React Compiler for auto-memoisation
 
-The data layer (`src/data/`) is a thin wrapper over `@supabase/supabase-js`. RLS policies in [`docs/phases/phase-09-rls-policies.sql`](./phases/phase-09-rls-policies.sql) enforce visibility; the client only filters server-side results.
+The data layer (`src/data/`) is a thin wrapper over `@supabase/supabase-js`. RLS policies in [`docs/phases/phase-05-rls-and-grants.sql`](./phases/phase-05-rls-and-grants.sql) enforce visibility; the client only filters server-side results.

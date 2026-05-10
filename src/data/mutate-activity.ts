@@ -29,7 +29,7 @@ export type ActivityInput = {
 
 // Most activity (created, status_changed, priority_changed, category_changed,
 // department_routed) is emitted server-side by the requests_after_insert /
-// requests_after_update triggers in phase-07. The app keeps emitting:
+// requests_after_update triggers in phase-04. The app keeps emitting:
 //   • assignee_added / assignee_removed  — written from mutate-requests
 //   • comment_posted                     — written from mutate-comments
 //   • field_updated                      — written from mutate-requests for freeform fields

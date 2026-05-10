@@ -17,7 +17,7 @@ export type SignupResult = {
 
 export async function signupUser(input: SignupInput): Promise<SignupResult> {
     const email = input.email.trim().toLowerCase()
-    // The handle_new_user trigger (phase-14) creates the matching public.profiles
+    // The handle_new_user trigger (phase-04) creates the matching public.profiles
     // row AND, if pending_workspace_id is supplied, inserts a pending
     // workspace_members row — all server-side under SECURITY DEFINER. The
     // client doesn't perform either insert, which is what makes signup work

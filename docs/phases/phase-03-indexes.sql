@@ -1,4 +1,7 @@
--- phase-06-indexes.sql
+-- phase-03-indexes.sql
+--
+-- Composite / partial indexes that back common app queries. Every CREATE INDEX
+-- uses IF NOT EXISTS, so this script is safe to re-run on a populated database.
 
 create index if not exists idx_workspace_members_workspace_user
   on public.workspace_members (workspace_id, user_id);
@@ -38,3 +41,9 @@ create index if not exists idx_comments_request
 
 create index if not exists idx_activity_logs_request
   on public.activity_logs (request_id, created_at desc);
+
+create index if not exists bug_reports_status_created_idx
+  on public.bug_reports (status, created_at desc);
+
+create index if not exists bug_reports_workspace_idx
+  on public.bug_reports (workspace_id);
