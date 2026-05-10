@@ -210,6 +210,8 @@ select private.reconcile_column('public.workspace_roles'::regclass, 'is_system',
 
 select private.reconcile_constraint('public.workspace_roles'::regclass, 'workspace_roles_workspace_id_name_key',
   'unique (workspace_id, name)');
+select private.reconcile_constraint('public.workspace_roles'::regclass, 'workspace_roles_id_workspace_id_key',
+  'unique (id, workspace_id)');
 select private.reconcile_constraint('public.workspace_roles'::regclass, 'workspace_roles_workspace_id_fkey',
   'foreign key (workspace_id) references public.workspaces(id) on delete cascade');
 
@@ -244,6 +246,8 @@ select private.reconcile_constraint('public.workspace_members'::regclass, 'works
   'foreign key (user_id) references public.profiles(id) on delete cascade');
 select private.reconcile_constraint('public.workspace_members'::regclass, 'workspace_members_workspace_role_id_fkey',
   'foreign key (workspace_role_id) references public.workspace_roles(id)');
+select private.reconcile_constraint('public.workspace_members'::regclass, 'workspace_members_workspace_role_scope_fkey',
+  'foreign key (workspace_role_id, workspace_id) references public.workspace_roles(id, workspace_id)');
 select private.reconcile_constraint('public.workspace_members'::regclass, 'workspace_members_approved_by_fkey',
   'foreign key (approved_by) references public.profiles(id)');
 
@@ -272,6 +276,8 @@ select private.reconcile_column('public.departments'::regclass, 'updated_at',   
 
 select private.reconcile_constraint('public.departments'::regclass, 'departments_workspace_id_name_key',
   'unique (workspace_id, name)');
+select private.reconcile_constraint('public.departments'::regclass, 'departments_id_workspace_id_key',
+  'unique (id, workspace_id)');
 select private.reconcile_constraint('public.departments'::regclass, 'departments_workspace_id_fkey',
   'foreign key (workspace_id) references public.workspaces(id) on delete cascade');
 
@@ -322,10 +328,14 @@ select private.reconcile_column('public.categories'::regclass, 'is_active',     
 
 select private.reconcile_constraint('public.categories'::regclass, 'categories_workspace_id_label_key',
   'unique (workspace_id, label)');
+select private.reconcile_constraint('public.categories'::regclass, 'categories_id_workspace_id_key',
+  'unique (id, workspace_id)');
 select private.reconcile_constraint('public.categories'::regclass, 'categories_workspace_id_fkey',
   'foreign key (workspace_id) references public.workspaces(id) on delete cascade');
 select private.reconcile_constraint('public.categories'::regclass, 'categories_default_department_id_fkey',
   'foreign key (default_department_id) references public.departments(id) on delete restrict');
+select private.reconcile_constraint('public.categories'::regclass, 'categories_default_department_scope_fkey',
+  'foreign key (default_department_id, workspace_id) references public.departments(id, workspace_id) on delete restrict');
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- 9. requests
@@ -386,8 +396,12 @@ select private.reconcile_constraint('public.requests'::regclass, 'requests_works
   'foreign key (workspace_id) references public.workspaces(id) on delete cascade');
 select private.reconcile_constraint('public.requests'::regclass, 'requests_category_id_fkey',
   'foreign key (category_id) references public.categories(id) on delete set null');
+select private.reconcile_constraint('public.requests'::regclass, 'requests_category_scope_fkey',
+  'foreign key (category_id, workspace_id) references public.categories(id, workspace_id) on delete set null');
 select private.reconcile_constraint('public.requests'::regclass, 'requests_department_id_fkey',
   'foreign key (department_id) references public.departments(id) on delete restrict');
+select private.reconcile_constraint('public.requests'::regclass, 'requests_department_scope_fkey',
+  'foreign key (department_id, workspace_id) references public.departments(id, workspace_id) on delete restrict');
 select private.reconcile_constraint('public.requests'::regclass, 'requests_submitted_by_user_id_fkey',
   'foreign key (submitted_by_user_id) references public.profiles(id) on delete set null');
 

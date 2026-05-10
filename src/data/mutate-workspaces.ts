@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { getCurrentContext } from './store/current-context'
 import { mapWorkspace, type WorkspaceRow } from './map-workspace'
 import { type WorkspaceRoleRow } from './map-workspace-role'
+import { approveWorkspaceMember } from './mutate-workspace-members'
 import type { Workspace } from '@/types/workspaces'
 
 export type WorkspaceUpdate = {
@@ -72,8 +73,6 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
 }
 
 export async function assignWorkspaceAdmin(workspaceId: string, profileId: string): Promise<void> {
-    const ctx = getCurrentContext()
-
     const { data: roleRow, error: roleError } = await supabase
         .from('workspace_roles')
         .select('id')
@@ -83,16 +82,16 @@ export async function assignWorkspaceAdmin(workspaceId: string, profileId: strin
     if (roleError) throw new Error(roleError.message)
     if (!roleRow) throw new Error('Admin role missing for workspace')
 
-    const now = new Date().toISOString()
-    const { error: upsertError } = await supabase
+    const { data: memberRow, error: upsertError } = await supabase
         .from('workspace_members')
         .upsert({
             workspace_id: workspaceId,
             user_id: profileId,
-            status: 'active',
-            workspace_role_id: roleRow.id,
-            approved_at: now,
-            approved_by: ctx.userId,
+            status: 'pending',
         }, { onConflict: 'workspace_id,user_id' })
-    if (upsertError) throw new Error(upsertError.message)
+        .select('id')
+        .single<{ id: string }>()
+    if (upsertError || !memberRow) throw new Error(upsertError?.message ?? 'Workspace admin assignment failed')
+
+    await approveWorkspaceMember(memberRow.id, roleRow.id)
 }

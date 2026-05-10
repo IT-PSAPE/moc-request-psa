@@ -28,7 +28,9 @@ set search_path = public, pg_temp
 as $$
   select r.*
   from public.workspace_members m
-  join public.workspace_roles r on r.id = m.workspace_role_id
+  join public.workspace_roles r
+    on r.id = m.workspace_role_id
+   and r.workspace_id = m.workspace_id
   where m.user_id = auth.uid()
     and m.workspace_id = target_workspace
     and m.status = 'active'
@@ -441,6 +443,14 @@ begin
   if v_member is null then raise exception 'Membership not found'; end if;
   if not (private.is_workspace_admin(v_member.workspace_id) or private.is_platform_admin()) then
     raise exception 'Not authorized';
+  end if;
+  if not exists (
+    select 1
+    from public.workspace_roles r
+    where r.id = p_role_id
+      and r.workspace_id = v_member.workspace_id
+  ) then
+    raise exception 'Role not found in workspace';
   end if;
 
   update public.workspace_members

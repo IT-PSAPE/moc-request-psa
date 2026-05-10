@@ -18,11 +18,12 @@ This folder is the source of truth for the MOC Request app.
 
 1. `bun install`
 2. Copy `.env.example` to `.env.local` and fill in `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` from your Supabase project's API settings.
-3. Make sure all phases in [`docs/phases/`](./phases/) have been applied to your Supabase project (in numbered order).
-4. `bun run dev`
-5. Open the local URL and sign up via `/signup` — Supabase Auth creates the user, the `handle_new_user` trigger creates the matching `profiles` row, and the form drops you into a pending workspace membership awaiting admin approval.
-6. To submit a request as an external user, visit `/submit/<workspace-slug>` (e.g. `/submit/acme`) — no login needed, slug is required.
-7. To track a request anonymously, visit `/track/<tracking-id>`.
+3. If you want Telegram webhooks on Vercel, also set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, and `TELEGRAM_WEBHOOK_REGISTER_SECRET`. `TELEGRAM_WEBHOOK_URL` is optional; if omitted, the register endpoint derives the webhook URL from the incoming request origin.
+4. Make sure all phases in [`docs/phases/`](./phases/) have been applied to your Supabase project (in numbered order).
+5. `bun run dev`
+6. Open the local URL and sign up via `/signup` — Supabase Auth creates the user, the `handle_new_user` trigger creates the matching `profiles` row, and the form drops you into a pending workspace membership awaiting admin approval.
+7. To submit a request as an external user, visit `/submit/<workspace-slug>` (e.g. `/submit/acme`) — no login needed, slug is required.
+8. To track a request anonymously, visit `/track/<tracking-id>`.
 
 ## Bootstrap (the very first user on a fresh project)
 

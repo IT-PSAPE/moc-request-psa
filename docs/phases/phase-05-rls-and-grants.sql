@@ -94,7 +94,13 @@ create policy workspace_members_read on public.workspace_members
 
 drop policy if exists workspace_members_self_insert on public.workspace_members;
 create policy workspace_members_self_insert on public.workspace_members
-  for insert with check (user_id = auth.uid() and status = 'pending');
+  for insert with check (
+    user_id = auth.uid()
+    and status = 'pending'
+    and workspace_role_id is null
+    and approved_at is null
+    and approved_by is null
+  );
 
 drop policy if exists workspace_members_admin_modify on public.workspace_members;
 create policy workspace_members_admin_modify on public.workspace_members
@@ -206,12 +212,20 @@ create policy request_assignees_modify on public.request_assignees
   for all using (
     exists (
       select 1 from public.requests r
+      join public.workspace_members m
+        on m.workspace_id = r.workspace_id
+       and m.user_id = request_assignees.user_id
+       and m.status = 'active'
       where r.id = request_assignees.request_id
         and (private.is_workspace_admin(r.workspace_id) or private.is_department_member(r.department_id))
     )
   ) with check (
     exists (
       select 1 from public.requests r
+      join public.workspace_members m
+        on m.workspace_id = r.workspace_id
+       and m.user_id = request_assignees.user_id
+       and m.status = 'active'
       where r.id = request_assignees.request_id
         and (private.is_workspace_admin(r.workspace_id) or private.is_department_member(r.department_id))
     )
@@ -292,6 +306,8 @@ create policy bug_reports_platform_delete on public.bug_reports
 revoke all on schema public from anon;
 grant usage on schema public to anon;
 
+revoke execute on all functions in schema public from public, anon, authenticated;
+
 grant execute on function public.submit_public_request(uuid, uuid, jsonb)        to anon;
 grant execute on function public.lookup_request_by_tracking_id(text)             to anon;
 grant execute on function public.lookup_workspace_by_slug(text)                  to anon, authenticated;
@@ -300,6 +316,31 @@ grant execute on function public.list_public_categories(uuid)                   
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant execute on function public.approve_workspace_member(uuid, uuid)            to authenticated;
+
+revoke update on public.profiles from authenticated;
+grant update (name, surname, email) on public.profiles to authenticated;
+
+revoke update on public.comments from authenticated;
+grant update (body) on public.comments to authenticated;
+
+revoke update on public.requests from authenticated;
+grant update (
+  title,
+  category_id,
+  department_id,
+  priority,
+  status,
+  due_date,
+  requested_by_name,
+  requested_by_email,
+  who,
+  what,
+  when_text,
+  where_text,
+  why,
+  how,
+  notes
+) on public.requests to authenticated;
 
 -- bug_reports gets the same DML grants the catch-all above already covers; the
 -- explicit re-grant below documents the intent (RLS scopes who can do what).

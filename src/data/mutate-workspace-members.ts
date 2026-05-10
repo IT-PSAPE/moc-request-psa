@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import { getCurrentContext } from './store/current-context'
 import { type WorkspaceMemberRow } from './map-workspace-member'
 import type { DepartmentRole } from '@/types/departments'
 import type { MemberStatus } from '@/types/profiles'
@@ -48,7 +47,6 @@ export async function setMemberStatus(
     nextStatus: MemberStatus,
     options: SetMemberStatusOptions = {},
 ): Promise<void> {
-    const ctx = getCurrentContext()
     const { data: row, error: fetchError } = await supabase
         .from('workspace_members')
         .select('status, workspace_role_id')
@@ -62,9 +60,8 @@ export async function setMemberStatus(
     if (nextStatus === 'active') {
         const roleId = row.workspace_role_id ?? options.fallbackRoleId ?? null
         if (!roleId) throw new Error('A role is required when activating a member')
-        patch.workspace_role_id = roleId
-        patch.approved_at = new Date().toISOString()
-        patch.approved_by = ctx.userId
+        await approveWorkspaceMember(membershipId, roleId)
+        return
     }
     const { error } = await supabase
         .from('workspace_members')
