@@ -1,4 +1,4 @@
-import { MoreHorizontal, Trash2 } from 'lucide-react'
+import { Mail, MoreHorizontal, Send, Trash2 } from 'lucide-react'
 import { Table } from '@/components/display/table'
 import { Badge } from '@/components/display/badge'
 import { Avatar } from '@/components/display/avatar'
@@ -11,6 +11,7 @@ import {
     removeWorkspaceMember,
     setWorkspaceMemberRole,
 } from '@/data/mutate-workspace-members'
+import { resendWorkspaceInvitation } from '@/data/mutate-invitations'
 import { getErrorMessage } from '@/utils/get-error-message'
 import { badgeColor } from '@/lib/color-keys'
 import { MemberStatusSelect } from './member-status-select'
@@ -34,19 +35,33 @@ export function AllMembersTable({ members, roles, onChanged }: AllMembersTablePr
     const confirm = useConfirm()
 
     async function handleRemove(member: ResolvedMember) {
+        const isInvited = member.membership.status === 'invited'
         const ok = await confirm({
-            title: `Remove ${member.profile.name} from the workspace?`,
-            description: 'They will lose access immediately. The user record itself is preserved.',
-            confirmLabel: 'Remove',
+            title: isInvited
+                ? `Revoke invitation for ${member.profile.name}?`
+                : `Remove ${member.profile.name} from the workspace?`,
+            description: isInvited
+                ? 'They will no longer be able to accept this invite. You can invite them again later.'
+                : 'They will lose access immediately. The user record itself is preserved.',
+            confirmLabel: isInvited ? 'Revoke' : 'Remove',
             intent: 'danger',
         })
         if (!ok) return
         try {
             await removeWorkspaceMember(member.membership.id)
-            toast({ title: 'Member removed', variant: 'info' })
+            toast({ title: isInvited ? 'Invitation revoked' : 'Member removed', variant: 'info' })
             await onChanged()
         } catch (err) {
-            toast({ title: 'Remove failed', description: getErrorMessage(err, 'Could not remove.'), variant: 'error' })
+            toast({ title: isInvited ? 'Revoke failed' : 'Remove failed', description: getErrorMessage(err, 'Could not remove.'), variant: 'error' })
+        }
+    }
+
+    async function handleResend(member: ResolvedMember) {
+        try {
+            await resendWorkspaceInvitation(member.profile.id)
+            toast({ title: 'Invitation resent', variant: 'success' })
+        } catch (err) {
+            toast({ title: 'Resend failed', description: getErrorMessage(err, 'Could not resend.'), variant: 'error' })
         }
     }
 
@@ -83,6 +98,9 @@ export function AllMembersTable({ members, roles, onChanged }: AllMembersTablePr
                 <Table.Body>
                     {members.map(member => {
                         const initials = initialsOf(member.profile.name, member.profile.surname)
+                        const status = member.membership.status
+                        const canEditRole = status === 'active' || status === 'invited'
+                        const isInvited = status === 'invited'
                         return (
                             <Table.Row key={member.membership.id}>
                                 <Table.Cell className="px-3 py-2">
@@ -98,13 +116,13 @@ export function AllMembersTable({ members, roles, onChanged }: AllMembersTablePr
                                     <MemberStatusSelect
                                         membershipId={member.membership.id}
                                         profile={member.profile}
-                                        status={member.membership.status}
+                                        status={status}
                                         roles={roles}
                                         onChanged={onChanged}
                                     />
                                 </Table.Cell>
                                 <Table.Cell className="px-3 py-2">
-                                    {member.membership.status === 'active' ? (
+                                    {canEditRole ? (
                                         <Dropdown.Root placement="bottom-start">
                                             <Dropdown.Trigger>
                                                 <span className="inline-flex items-center gap-1 cursor-pointer paragraph-sm text-primary hover:text-brand">
@@ -140,8 +158,14 @@ export function AllMembersTable({ members, roles, onChanged }: AllMembersTablePr
                                             <Button.Icon icon={<MoreHorizontal />} variant="ghost" aria-label="Actions" />
                                         </Dropdown.Trigger>
                                         <Dropdown.Panel>
+                                            {isInvited && (
+                                                <Dropdown.Item onClick={() => handleResend(member)}>
+                                                    <Send className="size-4" /><span>Resend invitation</span>
+                                                </Dropdown.Item>
+                                            )}
                                             <Dropdown.Item onClick={() => handleRemove(member)}>
-                                                <Trash2 className="size-4" /><span>Remove from workspace</span>
+                                                {isInvited ? <Mail className="size-4" /> : <Trash2 className="size-4" />}
+                                                <span>{isInvited ? 'Revoke invitation' : 'Remove from workspace'}</span>
                                             </Dropdown.Item>
                                         </Dropdown.Panel>
                                     </Dropdown.Root>

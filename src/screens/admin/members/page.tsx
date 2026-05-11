@@ -1,58 +1,53 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { UserPlus } from 'lucide-react'
+import { Button } from '@/components/controls/button'
 import { Spinner } from '@/components/feedback/spinner'
-import { Tabs } from '@/components/layout/tabs'
-import { fetchWorkspaceMembers, type ResolvedMember } from '@/data/fetch-workspace-members'
-import { supabase } from '@/lib/supabase'
-import { mapWorkspaceRole, type WorkspaceRoleRow } from '@/data/map-workspace-role'
+import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useCurrentWorkspace } from '@/features/workspace/workspace-provider'
+import { useMembers } from '@/features/members/members-provider'
+import { useWorkspaceRoles } from '@/features/workspace/workspace-roles-provider'
 import { useDepartments } from '@/features/departments/department-provider'
 import { AllMembersTable } from '@/features/admin/all-members-table'
-import { DepartmentMembersTable } from '@/features/admin/department-members-table'
-import type { WorkspaceRole } from '@/types/workspaces'
-
-const ALL_TAB = 'all'
+import { InviteMemberModal, type InviteSubmitValues } from '@/features/admin/invite-member-modal'
+import { inviteWorkspaceMember } from '@/data/mutate-invitations'
 
 export function AdminMembersScreen() {
     const { state: { workspace } } = useCurrentWorkspace()
-    const { state: deptState, actions: deptActions } = useDepartments()
-    const [members, setMembers] = useState<ResolvedMember[]>([])
-    const [roles, setRoles] = useState<WorkspaceRole[]>([])
-    const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState(ALL_TAB)
+    const { state: membersState, actions: membersActions } = useMembers()
+    const { state: rolesState } = useWorkspaceRoles()
+    const { state: deptState } = useDepartments()
+    const { toast } = useFeedback()
+    const [inviteOpen, setInviteOpen] = useState(false)
 
-    const refresh = useCallback(async () => {
-        const [list] = await Promise.all([fetchWorkspaceMembers(), deptActions.refresh()])
-        setMembers(list)
-    }, [deptActions])
-
-    useEffect(() => {
-        let active = true
-        ;(async () => {
-            setLoading(true)
-            await refresh()
-            if (!active) return
-            if (workspace) {
-                const { data, error } = await supabase
-                    .from('workspace_roles')
-                    .select('*')
-                    .eq('workspace_id', workspace.id)
-                if (!active) return
-                if (error) throw new Error(error.message)
-                setRoles((data ?? []).map(r => mapWorkspaceRole(r as WorkspaceRoleRow)))
-            }
-            if (active) setLoading(false)
-        })()
-        return () => { active = false }
-    }, [refresh, workspace])
-
-    const activeMembers = useMemo(
-        () => members.filter(m => m.membership.status === 'active'),
-        [members],
-    )
     const pendingCount = useMemo(
-        () => members.filter(m => m.membership.status === 'pending').length,
-        [members],
+        () => membersState.members.filter(m => m.membership.status === 'pending').length,
+        [membersState.members],
     )
+
+    const loading = membersState.loading || rolesState.loading
+
+    async function handleInvite(values: InviteSubmitValues) {
+        const result = await inviteWorkspaceMember({
+            email: values.email,
+            name: values.name || null,
+            workspaceRoleId: values.workspaceRoleId,
+            departmentAssignments: values.departmentAssignments,
+        })
+        if (!result.ok) {
+            const description = result.error === 'already_member'
+                ? 'This email is already in your workspace.'
+                : result.error
+            toast({ title: 'Invite failed', description, variant: 'error' })
+            throw new Error(result.error)
+        }
+        toast({
+            title: result.mode === 'added_existing'
+                ? `${values.email} added to workspace`
+                : `Invitation sent to ${values.email}`,
+            variant: 'success',
+        })
+        await membersActions.refresh()
+    }
 
     if (loading || !workspace) {
         return (
@@ -64,50 +59,39 @@ export function AdminMembersScreen() {
 
     return (
         <div className="space-y-6">
-            <div className="space-y-1">
-                <h2 className="title-h6">Members</h2>
-                <p className="paragraph-sm text-tertiary">
-                    Approve sign-ups, change roles, and assign people to departments.
-                </p>
+            <div className="flex items-end justify-between">
+                <div className="space-y-1">
+                    <h2 className="title-h6">Members</h2>
+                    <p className="paragraph-sm text-tertiary">
+                        Approve sign-ups and change workspace roles. Department assignments live under Departments.
+                    </p>
+                </div>
+                <Button icon={<UserPlus />} onClick={() => setInviteOpen(true)}>
+                    Invite member
+                </Button>
             </div>
 
             {pendingCount > 0 && (
-                <button
-                    type="button"
-                    onClick={() => setActiveTab(ALL_TAB)}
-                    className="w-full text-left rounded-lg border border-warning bg-warning_subtle px-3 py-2 hover:bg-warning_subtle_hover transition-colors cursor-pointer"
-                >
+                <div className="rounded-lg border border-warning bg-warning_subtle px-3 py-2">
                     <p className="paragraph-sm text-warning font-medium">
                         {pendingCount} pending sign-up{pendingCount > 1 ? 's' : ''} awaiting your review
                     </p>
-                </button>
+                </div>
             )}
 
-            <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
-                <Tabs.List>
-                    <Tabs.Tab value={ALL_TAB}>All members</Tabs.Tab>
-                    {deptState.allDepartments.map(d => (
-                        <Tabs.Tab key={d.id} value={d.id}>{d.name}</Tabs.Tab>
-                    ))}
-                </Tabs.List>
+            <AllMembersTable
+                members={membersState.members}
+                roles={rolesState.roles}
+                onChanged={membersActions.refresh}
+            />
 
-                <Tabs.Panels className="pt-5">
-                    <Tabs.Panel value={ALL_TAB}>
-                        <AllMembersTable members={members} roles={roles} onChanged={refresh} />
-                    </Tabs.Panel>
-                    {deptState.allDepartments.map(d => (
-                        <Tabs.Panel key={d.id} value={d.id}>
-                            <DepartmentMembersTable
-                                department={d}
-                                members={members}
-                                activeMembers={activeMembers}
-                                roles={roles}
-                                onChanged={refresh}
-                            />
-                        </Tabs.Panel>
-                    ))}
-                </Tabs.Panels>
-            </Tabs.Root>
+            <InviteMemberModal
+                open={inviteOpen}
+                onOpenChange={setInviteOpen}
+                roles={rolesState.roles}
+                departments={deptState.allDepartments}
+                onSubmit={handleInvite}
+            />
         </div>
     )
 }

@@ -12,9 +12,10 @@ import { MetaRow } from '@/components/display/meta-row'
 import { Modal } from '@/components/overlays/modal'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useConfirm } from '@/components/feedback/confirm-modal'
-import { fetchCategoriesForCurrentWorkspace } from '@/data/fetch-categories'
-import { fetchDepartmentsForCurrentWorkspace } from '@/data/fetch-departments'
-import { fetchWorkspaceMembers, type ResolvedMember } from '@/data/fetch-workspace-members'
+import { useCategories } from '@/features/categories/categories-provider'
+import { useDepartments } from '@/features/departments/department-provider'
+import { useMembers } from '@/features/members/members-provider'
+import type { ResolvedMember } from '@/data/fetch-workspace-members'
 import { badgeColor } from '@/lib/color-keys'
 import { cn } from '@/utils/cn'
 import { formatUtcIsoForBrowserDateTimeInput, parseBrowserDateTimeInputToUtcIso } from '@/utils/browser-date-time'
@@ -22,8 +23,6 @@ import { getErrorMessage } from '@/utils/get-error-message'
 import { routes } from '@/screens/app-routes'
 import { priorityColor, priorityLabel, statusColor, statusLabel } from '@/types/requests'
 import type { Priority, Request, ResolvedAssignee, Status } from '@/types/requests'
-import type { Category } from '@/types/categories'
-import type { Department } from '@/types/departments'
 import { RequestEditorProvider, useRequestEditor } from './request-editor-provider'
 import { fiveWFields, formatRequestDate, requestStatusIcon } from './request-properties-view'
 
@@ -120,15 +119,7 @@ function PriorityRow() {
 
 function CategoryRow() {
     const { state, actions } = useRequestEditor()
-    const [categories, setCategories] = useState<Category[]>([])
-
-    useEffect(() => {
-        let active = true
-        fetchCategoriesForCurrentWorkspace().then(list => {
-            if (active) setCategories(list)
-        })
-        return () => { active = false }
-    }, [])
+    const { state: { categories } } = useCategories()
 
     const selected = categories.find(c => c.id === state.draft.categoryId) ?? null
     const triggerLabel = selected?.label ?? state.draft.categoryLabel ?? 'Uncategorized'
@@ -157,15 +148,7 @@ function CategoryRow() {
 
 function DepartmentRow() {
     const { state, actions } = useRequestEditor()
-    const [departments, setDepartments] = useState<Department[]>([])
-
-    useEffect(() => {
-        let active = true
-        fetchDepartmentsForCurrentWorkspace().then(list => {
-            if (active) setDepartments(list)
-        })
-        return () => { active = false }
-    }, [])
+    const { state: { allDepartments: departments } } = useDepartments()
 
     const selected = departments.find(d => d.id === state.draft.departmentId) ?? null
     const triggerLabel = selected?.name ?? state.draft.departmentName ?? 'Department'
@@ -594,15 +577,7 @@ function Assignees() {
     const { state, actions } = useRequestEditor()
     const { toast } = useFeedback()
     const [dialogOpen, setDialogOpen] = useState(false)
-    const [members, setMembers] = useState<ResolvedMember[]>([])
-
-    useEffect(() => {
-        let active = true
-        fetchWorkspaceMembers().then(list => {
-            if (active) setMembers(list)
-        })
-        return () => { active = false }
-    }, [])
+    const { state: { members } } = useMembers()
 
     const assignedIds = new Set(state.assignees.map(a => a.userId))
     const departmentId = state.draft.departmentId

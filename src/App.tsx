@@ -3,6 +3,7 @@ import { RequireAuth, RequireActiveMembership, RedirectIfAuth } from '@/features
 import { LoginScreen } from '@/screens/auth/login'
 import { SignupScreen } from '@/screens/auth/signup'
 import { PendingScreen } from '@/screens/auth/pending'
+import { AcceptInvitationScreen } from '@/screens/auth/accept-invitation'
 import { DashboardScreen } from '@/screens/dashboard/page'
 import { DepartmentScreen } from '@/screens/departments/page'
 import { RequestDetailScreen } from '@/screens/requests/detail/page'
@@ -24,6 +25,9 @@ import { PlatformCreateWorkspaceScreen } from '@/screens/platform/workspaces/cre
 import { PlatformWorkspaceDetailScreen } from '@/screens/platform/workspaces/detail/page'
 import { AppShell } from '@/features/app-shell'
 import { WorkspaceProvider } from '@/features/workspace/workspace-provider'
+import { WorkspaceRolesProvider } from '@/features/workspace/workspace-roles-provider'
+import { MembersProvider } from '@/features/members/members-provider'
+import { CategoriesProvider } from '@/features/categories/categories-provider'
 import { DepartmentProvider } from '@/features/departments/department-provider'
 import { RequestsProvider } from '@/features/requests/request-provider'
 import { SidebarProvider } from '@/components/navigation/sidebar'
@@ -37,11 +41,17 @@ function AppShellLayout() {
             <SidebarProvider>
                 <TopBarProvider>
                     <WorkspaceProvider>
-                        <DepartmentProvider>
-                            <RequestsProvider>
-                                <AppShell />
-                            </RequestsProvider>
-                        </DepartmentProvider>
+                        <WorkspaceRolesProvider>
+                            <MembersProvider>
+                                <CategoriesProvider>
+                                    <DepartmentProvider>
+                                        <RequestsProvider>
+                                            <AppShell />
+                                        </RequestsProvider>
+                                    </DepartmentProvider>
+                                </CategoriesProvider>
+                            </MembersProvider>
+                        </WorkspaceRolesProvider>
                     </WorkspaceProvider>
                 </TopBarProvider>
             </SidebarProvider>
@@ -66,6 +76,7 @@ const router = createBrowserRouter([
         element: <RequireAuth />,
         children: [
             { path: routes.pending, element: <PendingScreen /> },
+            { path: routes.acceptInvitation, element: <AcceptInvitationScreen /> },
             {
                 element: <RequireActiveMembership />,
                 children: [

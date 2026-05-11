@@ -38,7 +38,7 @@ export async function fetchWorkspaceMembers(): Promise<ResolvedMember[]> {
     // Step 1: workspace members + their profile + their workspace role.
     const { data: memberData, error: memberError } = await supabase
         .from('workspace_members')
-        .select('*, profile:profiles!workspace_members_user_id_fkey(*), role:workspace_roles(*)')
+        .select('*, profile:profiles!workspace_members_user_id_fkey(*), role:workspace_roles!workspace_members_workspace_role_id_fkey(*)')
         .eq('workspace_id', ctx.activeWorkspaceId)
     if (memberError) throw new Error(memberError.message)
     const memberRows = (memberData ?? []) as unknown as MemberJoinRow[]

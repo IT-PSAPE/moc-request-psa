@@ -13,6 +13,7 @@ export const routes = {
     resetPassword: 'reset-password',
     passwordRecovery: 'password-recovery',
     pending: 'pending',
+    acceptInvitation: 'accept-invitation',
 
     // App
     dashboard: 'dashboard',

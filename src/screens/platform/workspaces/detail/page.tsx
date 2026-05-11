@@ -45,7 +45,7 @@ async function loadContext(workspaceId: string): Promise<WorkspaceContext | null
 
     const { data: memberData, error: memberError } = await supabase
         .from('workspace_members')
-        .select('*, profile:profiles!workspace_members_user_id_fkey(*), role:workspace_roles(*)')
+        .select('*, profile:profiles!workspace_members_user_id_fkey(*), role:workspace_roles!workspace_members_workspace_role_id_fkey(*)')
         .eq('workspace_id', workspaceId)
     if (memberError) throw new Error(memberError.message)
     const memberRows = (memberData ?? []) as unknown as MemberJoin[]

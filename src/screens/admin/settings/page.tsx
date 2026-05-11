@@ -7,6 +7,7 @@ import { FormLabel } from '@/components/form/form-label'
 import { Spinner } from '@/components/feedback/spinner'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useCurrentWorkspace } from '@/features/workspace/workspace-provider'
+import { SubmitLinkCard } from '@/features/workspace/submit-link-card'
 import { updateWorkspace } from '@/data/mutate-workspaces'
 import { getErrorMessage } from '@/utils/get-error-message'
 
@@ -87,6 +88,8 @@ export function AdminSettingsScreen() {
                     </Button>
                 )}
             </form>
+
+            <SubmitLinkCard slug={workspace.slug} />
         </div>
     )
 }

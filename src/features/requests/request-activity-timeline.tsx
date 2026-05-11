@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Archive, CircleAlert, CircleCheck, GitPullRequestArrow, Loader, MessageSquare, Tag, Trash2, UserPlus, UserMinus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Avatar } from '@/components/display/avatar'
@@ -6,8 +6,8 @@ import { Label, Paragraph } from '@/components/display/text'
 import { Spinner } from '@/components/feedback/spinner'
 import { formatUtcIsoInBrowserTimeZone } from '@/utils/browser-date-time'
 import { useDepartments } from '@/features/departments/department-provider'
-import { fetchCategoriesForCurrentWorkspace } from '@/data/fetch-categories'
-import { fetchWorkspaceMembers } from '@/data/fetch-workspace-members'
+import { useCategories } from '@/features/categories/categories-provider'
+import { useMembers } from '@/features/members/members-provider'
 import { useRequestActivity } from './use-request-activity'
 import { formatActivity, type ActivityLookups } from './format-activity'
 import type { ActivityAction } from '@/types/activity'
@@ -35,24 +35,11 @@ type RequestActivityTimelineProps = {
 export function RequestActivityTimeline({ requestId }: RequestActivityTimelineProps) {
     const { entries, loading } = useRequestActivity(requestId)
     const { state: deptState } = useDepartments()
-    const [categories, setCategories] = useState<{ id: string; label: string }[]>([])
-    const [members, setMembers] = useState<{ id: string; name: string; surname: string | null }[]>([])
-
-    useEffect(() => {
-        let active = true
-        Promise.all([
-            fetchCategoriesForCurrentWorkspace(),
-            fetchWorkspaceMembers(),
-        ]).then(([cats, mems]) => {
-            if (!active) return
-            setCategories(cats.map(c => ({ id: c.id, label: c.label })))
-            setMembers(mems.map(m => ({ id: m.profile.id, name: m.profile.name, surname: m.profile.surname })))
-        })
-        return () => { active = false }
-    }, [])
+    const { state: { categories } } = useCategories()
+    const { state: { members } } = useMembers()
 
     const lookups = useMemo<ActivityLookups>(() => {
-        const userMap = new Map(members.map(m => [m.id, [m.name, m.surname].filter(Boolean).join(' ')]))
+        const userMap = new Map(members.map(m => [m.profile.id, [m.profile.name, m.profile.surname].filter(Boolean).join(' ')]))
         const deptMap = new Map(deptState.allDepartments.map(d => [d.id, d.name]))
         const catMap = new Map(categories.map(c => [c.id, c.label]))
         return {

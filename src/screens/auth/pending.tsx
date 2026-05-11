@@ -20,8 +20,12 @@ export function PendingScreen() {
     useEffect(() => {
         if (activeMembership?.status === 'active') {
             navigate(`/${routes.dashboard}`, { replace: true })
+            return
         }
-    }, [activeMembership, navigate])
+        if (memberships.some(m => m.status === 'invited')) {
+            navigate(`/${routes.acceptInvitation}`, { replace: true })
+        }
+    }, [activeMembership, memberships, navigate])
 
     useEffect(() => {
         let active = true

@@ -4,6 +4,7 @@ import { useCurrentWorkspace } from '@/features/workspace/workspace-provider'
 import { Spinner } from '@/components/feedback/spinner'
 import { Tabs } from '@/components/layout/tabs'
 import { routes } from '@/screens/app-routes'
+import { Paragraph, Title } from '@/components/display/text';
 
 const TABS = [
     { value: `/${routes.settingsWorkspace}`, label: 'Workspace' },
@@ -34,18 +35,15 @@ export function SettingsLayout() {
     return (
         <div className="px-6 py-8 max-w-6xl mx-auto space-y-6">
             <div className="space-y-1">
-                <h1 className="title-h5">Settings</h1>
-                <p className="paragraph-sm text-tertiary">
+                <Title.h4>Settings</Title.h4>
+                <Paragraph.md className="paragraph-sm text-tertiary">
                     Manage your workspace, members, departments, and categories.
-                </p>
+                </Paragraph.md>
             </div>
 
-            <Tabs.Root
-                orientation="vertical"
-                value={activeTab}
-                onValueChange={(next) => navigate(next)}
-            >
+            <Tabs.Root orientation="vertical" value={activeTab} onValueChange={(next) => navigate(next)} >
                 <div className="grid gap-10 md:grid-cols-[200px_1fr] items-start">
+                    
                     <Tabs.List className="md:sticky md:top-4">
                         {TABS.map(tab => (
                             <Tabs.Tab key={tab.value} value={tab.value}>

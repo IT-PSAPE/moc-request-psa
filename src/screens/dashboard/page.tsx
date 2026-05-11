@@ -4,6 +4,7 @@ import { useCurrentWorkspace } from '@/features/workspace/workspace-provider'
 import { useDepartments } from '@/features/departments/department-provider'
 import { useRequests } from '@/features/requests/request-provider'
 import { RequestByDepartment } from '@/features/requests/request-by-department'
+import { SubmitLinkCard } from '@/features/workspace/submit-link-card'
 import { Spinner } from '@/components/feedback/spinner'
 import { activeStatuses } from '@/types/requests'
 
@@ -47,6 +48,12 @@ export function DashboardScreen() {
                     Welcome to <span className="font-medium">{workspace?.name ?? 'your workspace'}</span>.
                 </p>
             </div>
+
+            {showAll && workspace && (
+                <div className="px-4">
+                    <SubmitLinkCard slug={workspace.slug} variant="compact" />
+                </div>
+            )}
 
             <div>
                 <h2 className="title-h6 mb-3 px-4">{heading}</h2>

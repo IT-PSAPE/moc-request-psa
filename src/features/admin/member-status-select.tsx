@@ -10,20 +10,24 @@ import type { WorkspaceRole } from '@/types/workspaces'
 
 const STATUS_LABELS: Record<MemberStatus, string> = {
     pending: 'Pending',
+    invited: 'Invited',
     active: 'Active',
     rejected: 'Rejected',
     suspended: 'Suspended',
 }
 
-type BadgeColor = 'green' | 'yellow' | 'red' | 'gray'
+type BadgeColor = 'green' | 'yellow' | 'red' | 'gray' | 'blue'
 
 const STATUS_COLORS: Record<MemberStatus, BadgeColor> = {
     active: 'green',
     pending: 'yellow',
+    invited: 'blue',
     rejected: 'red',
     suspended: 'gray',
 }
 
+// Statuses an admin can manually set. 'invited' is intentionally absent —
+// it's a side-effect of the invite flow, not a transition target.
 const STATUS_ORDER: MemberStatus[] = ['pending', 'active', 'rejected', 'suspended']
 
 const TRANSITION_COPY: Partial<Record<MemberStatus, { title: (name: string) => string; description: string; intent?: 'danger' | 'primary' }>> = {
@@ -84,6 +88,12 @@ export function MemberStatusSelect({ membershipId, profile, status, roles, onCha
         } finally {
             setBusy(false)
         }
+    }
+
+    // 'invited' is a side-effect status with its own action set (Resend/Revoke)
+    // that lives in the row's Actions menu — render a plain badge here.
+    if (status === 'invited') {
+        return <Badge label={STATUS_LABELS[status]} color={STATUS_COLORS[status]} />
     }
 
     return (

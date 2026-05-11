@@ -6,7 +6,11 @@ import { type DepartmentRow } from './map-department'
 import { emitActivity } from './mutate-activity'
 import type { Request, Status } from '@/types/requests'
 
-const SELECT_WITH_JOINS = '*, category:categories(*), department:departments(*)'
+// Disambiguate the embed: requests has both a single-column FK and a
+// composite (id, workspace_id) FK to each parent table, so PostgREST needs the
+// FK name to know which relationship to follow.
+const SELECT_WITH_JOINS =
+    '*, category:categories!requests_category_id_fkey(*), department:departments!requests_department_id_fkey(*)'
 
 type RequestJoinRow = RequestRow & {
     category: CategoryRow | null

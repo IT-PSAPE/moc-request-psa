@@ -1,4 +1,4 @@
-export type MemberStatus = 'pending' | 'active' | 'suspended' | 'rejected'
+export type MemberStatus = 'pending' | 'invited' | 'active' | 'suspended' | 'rejected'
 
 export type Profile = {
     id: string

@@ -86,12 +86,7 @@ export function DepartmentMembersTable({ department, members, activeMembers, rol
     return (
         <div className="space-y-3">
             <div className="flex items-end justify-between px-1">
-                <div className="space-y-0.5">
-                    <Label.md>{department.name}</Label.md>
-                    {department.description && (
-                        <Paragraph.xs className="text-quaternary">{department.description}</Paragraph.xs>
-                    )}
-                </div>
+                <Label.md>Members</Label.md>
                 <Button icon={<UserPlus />} onClick={() => setAddOpen(true)}>
                     Add members
                 </Button>

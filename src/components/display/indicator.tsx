@@ -29,8 +29,8 @@ const indicatorVariants = cv({
 
 export function Indicator({ className, color = 'gray', ...props }: IndicatorProps) {
     return (
-        <span className={cn('flex items-center justify-center', className)} {...props}>
-            <span className="flex size-4 items-center justify-center rounded-full bg-primary p-[3px]">
+        <span className={cn('flex items-center justify-center shrink-0', className)} {...props}>
+            <span className="flex size-4 items-center justify-center rounded-full bg-primary p-[3px] shrink-0">
                 <span className={indicatorVariants({ color })} />
             </span>
         </span>
