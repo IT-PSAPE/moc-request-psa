@@ -4,7 +4,7 @@ import {
     jsonResponse,
     readTelegramUpdate,
     sendTelegramMessage,
-} from './shared'
+} from './shared.js'
 
 export const config = { runtime: 'edge' }
 

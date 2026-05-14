@@ -1,4 +1,4 @@
-import { fetchTelegramWebhookInfo, isRegisterRequestAuthorized, jsonResponse, registerTelegramWebhook } from './shared'
+import { fetchTelegramWebhookInfo, isRegisterRequestAuthorized, jsonResponse, registerTelegramWebhook } from './shared.js'
 
 export const config = { runtime: 'edge' }
 
