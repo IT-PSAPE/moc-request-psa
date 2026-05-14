@@ -12,9 +12,9 @@
 // workspace OR a platform admin.
 //
 // Required env (set on Vercel):
-//   SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY
-//   APP_PUBLIC_URL  (used as the redirectTo for the magic link)
+//   VITE_SUPABASE_URL       (shared with the client build)
+//   SUPABASE_SECRET_KEY     (server-only, sb_secret_… — replaces the legacy SUPABASE_SERVICE_ROLE_KEY)
+//   APP_PUBLIC_URL          (used as the redirectTo for the magic link)
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
@@ -90,9 +90,9 @@ async function ensureCallerIsWorkspaceAdmin(
     admin: SupabaseClient,
     workspaceId: string,
 ): Promise<{ userId: string }> {
-    const supabaseUrl = getRequiredEnv('SUPABASE_URL')
-    const serviceKey = getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY')
-    const userClient = createClient(supabaseUrl, serviceKey, {
+    const supabaseUrl = getRequiredEnv('VITE_SUPABASE_URL')
+    const secretKey = getRequiredEnv('SUPABASE_SECRET_KEY')
+    const userClient = createClient(supabaseUrl, secretKey, {
         global: { headers: { Authorization: `Bearer ${callerToken}` } },
         auth: { persistSession: false, autoRefreshToken: false },
     })
@@ -260,7 +260,7 @@ export default async function handler(request: Request): Promise<Response> {
 
     let admin: SupabaseClient
     try {
-        admin = createClient(getRequiredEnv('SUPABASE_URL'), getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
+        admin = createClient(getRequiredEnv('VITE_SUPABASE_URL'), getRequiredEnv('SUPABASE_SECRET_KEY'), {
             auth: { persistSession: false, autoRefreshToken: false },
         })
     } catch (err) {
