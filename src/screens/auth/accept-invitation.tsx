@@ -96,9 +96,11 @@ export function AcceptInvitationScreen() {
                 setError(updateError.message)
                 return
             }
-            // The on_auth_user_email_confirmed trigger has already promoted
-            // 'invited' → 'active' the moment the magic link landed us here.
-            // Refresh local auth state and head to the dashboard.
+            const { error: completeError } = await supabase.rpc('complete_invitation')
+            if (completeError) {
+                setError(completeError.message)
+                return
+            }
             await refresh()
             navigate(`/${routes.dashboard}`, { replace: true })
         } catch (err) {

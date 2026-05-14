@@ -5,9 +5,11 @@
 --   • Extends handle_new_user() to recognise invite metadata and create the
 --     workspace_members + department_members rows in 'invited' state instead
 --     of the self-signup 'pending' state.
---   • Adds an UPDATE trigger on auth.users that flips 'invited' → 'active'
---     when email_confirmed_at transitions from null to non-null (the moment
---     the invitee consumes the magic link).
+--   • Exposes a complete_invitation() RPC the invitee calls after setting
+--     their password; it flips every one of their 'invited' memberships to
+--     'active'. (Earlier revisions used a trigger that promoted on email
+--     confirmation, but that fired before the password-setup screen ran and
+--     was dropped.)
 --
 -- Idempotent: the enum extension uses `if not exists`, every function uses
 -- CREATE OR REPLACE, and triggers are dropped before recreate.
@@ -152,33 +154,39 @@ $$;
 -- The trigger itself is already declared in phase-04; left alone here.
 
 -- ───────────────────────────────────────────────────────────────────────────
--- 3. Promote 'invited' → 'active' when email_confirmed_at is set.
+-- 3. Promote 'invited' → 'active' when the invitee finishes password setup.
 --
--- Fires on UPDATE of auth.users where email_confirmed_at transitions from
--- NULL to non-null (Supabase sets this when the magic-link is consumed).
--- All 'invited' memberships for that user — across every workspace they were
--- invited to — are flipped to 'active' in one shot.
+-- Earlier versions fired a trigger on auth.users.email_confirmed_at, but that
+-- ran the instant the magic link was consumed — before the invitee reached
+-- the /accept-invitation password screen. The screen would then see an
+-- already-'active' membership and skip the password step entirely.
+--
+-- The trigger is dropped here. Promotion is now driven by the invitee
+-- explicitly calling complete_invitation() after a successful
+-- supabase.auth.updateUser({ password }) on the accept-invitation screen.
 -- ───────────────────────────────────────────────────────────────────────────
 
-create or replace function public.promote_invited_memberships_on_email_confirmed()
-returns trigger
+drop trigger if exists on_auth_user_email_confirmed on auth.users;
+drop function if exists public.promote_invited_memberships_on_email_confirmed();
+
+create or replace function public.complete_invitation()
+returns void
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if old.email_confirmed_at is null and new.email_confirmed_at is not null then
-    update public.workspace_members
-       set status = 'active',
-           approved_at = coalesce(approved_at, now())
-     where user_id = new.id
-       and status = 'invited';
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
   end if;
-  return new;
+
+  update public.workspace_members
+     set status = 'active',
+         approved_at = coalesce(approved_at, now())
+   where user_id = auth.uid()
+     and status = 'invited';
 end;
 $$;
 
-drop trigger if exists on_auth_user_email_confirmed on auth.users;
-create trigger on_auth_user_email_confirmed
-  after update of email_confirmed_at on auth.users
-  for each row execute procedure public.promote_invited_memberships_on_email_confirmed();
+revoke all on function public.complete_invitation() from public;
+grant execute on function public.complete_invitation() to authenticated;
