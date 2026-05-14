@@ -6,6 +6,8 @@ import {
     sendTelegramMessage,
 } from './shared'
 
+export const config = { runtime: 'edge' }
+
 async function handleMessageCommand(updateText: string, chatId: number | string): Promise<void> {
     const command = updateText.trim().split(/\s+/, 1)[0]?.toLowerCase()
 

@@ -1,5 +1,7 @@
 import { fetchTelegramWebhookInfo, isRegisterRequestAuthorized, jsonResponse, registerTelegramWebhook } from './shared'
 
+export const config = { runtime: 'edge' }
+
 export default async function handler(request: Request): Promise<Response> {
     try {
         if (!isRegisterRequestAuthorized(request)) {

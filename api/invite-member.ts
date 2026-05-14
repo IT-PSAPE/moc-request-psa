@@ -18,6 +18,8 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+export const config = { runtime: 'edge' }
+
 type DepartmentAssignment = { department_id: string; role: 'member' | 'lead' }
 
 type InvitePayload = {
