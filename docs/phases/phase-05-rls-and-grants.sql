@@ -308,8 +308,8 @@ grant usage on schema public to anon;
 
 revoke execute on all functions in schema public from public, anon, authenticated;
 
-grant execute on function public.submit_public_request(uuid, uuid, jsonb)        to anon;
-grant execute on function public.lookup_request_by_tracking_id(text)             to anon;
+grant execute on function public.submit_public_request(uuid, uuid, jsonb)        to anon, authenticated;
+grant execute on function public.lookup_request_by_tracking_id(text)             to anon, authenticated;
 grant execute on function public.lookup_workspace_by_slug(text)                  to anon, authenticated;
 grant execute on function public.list_public_categories(uuid)                    to anon, authenticated;
 
