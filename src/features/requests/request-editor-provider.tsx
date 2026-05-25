@@ -8,6 +8,7 @@ import {
     unarchiveRequest,
 } from '@/data/mutate-requests'
 import { fetchAssigneesForRequest } from '@/data/fetch-assignees'
+import { usePermissions } from '@/features/auth/use-permissions'
 import type { Request, ResolvedAssignee } from '@/types/requests'
 
 type RequestEditorContextValue = {
@@ -30,6 +31,10 @@ type RequestEditorContextValue = {
     }
     meta: {
         initialRequest: Request
+        /** Caller may change request fields, status, assignees (RLS can_update). */
+        canUpdate: boolean
+        /** Caller may delete the request (RLS can_delete). */
+        canDelete: boolean
     }
 }
 
@@ -46,6 +51,7 @@ type RequestEditorProviderProps = {
 export function RequestEditorProvider({ request, assignees: initialAssignees, onSync, onRemove, children }: RequestEditorProviderProps) {
     const { state, actions } = useRequestStore(request, { syncRequest: onSync })
     const [assignees, setAssignees] = useState<ResolvedAssignee[]>(initialAssignees)
+    const { canUpdate, canDelete } = usePermissions()
 
     const refreshAssignees = useCallback(async () => {
         const next = await fetchAssigneesForRequest(state.draft.id)
@@ -101,8 +107,10 @@ export function RequestEditorProvider({ request, assignees: initialAssignees, on
         },
         meta: {
             initialRequest: request,
+            canUpdate,
+            canDelete,
         },
-    }), [state.draft, state.isDirty, state.isSaving, state.error, assignees, actions.updateField, actions.save, actions.discard, archive, unarchive, remove, addAssignee, removeAssignee, request])
+    }), [state.draft, state.isDirty, state.isSaving, state.error, assignees, actions.updateField, actions.save, actions.discard, archive, unarchive, remove, addAssignee, removeAssignee, request, canUpdate, canDelete])
 
     return <RequestEditorContext value={value}>{children}</RequestEditorContext>
 }

@@ -50,11 +50,12 @@ function Root({ request, assignees, onSync, onRemove, children }: RootProps) {
 // ─── Title ───────────────────────────────────────────────────────────
 
 function Title() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     return (
         <Input
             value={state.draft.title}
             onChange={e => actions.updateField('title', e.target.value)}
+            readOnly={!meta.canUpdate}
             style="ghost"
             className="text-3xl font-semibold"
         />
@@ -76,8 +77,15 @@ function ErrorBanner() {
 // ─── Meta fields ─────────────────────────────────────────────────────
 
 function StatusRow() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     const status = state.draft.status
+    if (!meta.canUpdate) {
+        return (
+            <MetaRow icon={<Loader />} label="Status">
+                <Badge label={statusLabel[status]} icon={requestStatusIcon[status]} color={badgeColor(statusColor[status])} />
+            </MetaRow>
+        )
+    }
     return (
         <MetaRow icon={<Loader />} label="Status">
             <Dropdown.Root placement="bottom">
@@ -97,8 +105,15 @@ function StatusRow() {
 }
 
 function PriorityRow() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     const priority = state.draft.priority
+    if (!meta.canUpdate) {
+        return (
+            <MetaRow icon={<CircleChevronDown />} label="Priority">
+                <Badge label={priorityLabel[priority]} icon={<CircleAlert />} color={badgeColor(priorityColor[priority])} />
+            </MetaRow>
+        )
+    }
     return (
         <MetaRow icon={<CircleChevronDown />} label="Priority">
             <Dropdown.Root placement="bottom">
@@ -118,12 +133,20 @@ function PriorityRow() {
 }
 
 function CategoryRow() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     const { state: { categories } } = useCategories()
 
     const selected = categories.find(c => c.id === state.draft.categoryId) ?? null
     const triggerLabel = selected?.label ?? state.draft.categoryLabel ?? 'Uncategorized'
     const triggerColor = badgeColor(selected?.colorKey ?? state.draft.categoryColor)
+
+    if (!meta.canUpdate) {
+        return (
+            <MetaRow icon={<Tag />} label="Category">
+                <Badge label={triggerLabel} icon={<Tag />} color={triggerColor} />
+            </MetaRow>
+        )
+    }
 
     return (
         <MetaRow icon={<Tag />} label="Category">
@@ -147,12 +170,20 @@ function CategoryRow() {
 }
 
 function DepartmentRow() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     const { state: { allDepartments: departments } } = useDepartments()
 
     const selected = departments.find(d => d.id === state.draft.departmentId) ?? null
     const triggerLabel = selected?.name ?? state.draft.departmentName ?? 'Department'
     const triggerColor = badgeColor(selected?.colorKey)
+
+    if (!meta.canUpdate) {
+        return (
+            <MetaRow icon={<Building2 />} label="Department">
+                <Badge label={triggerLabel} icon={<Building2 />} color={triggerColor} />
+            </MetaRow>
+        )
+    }
 
     return (
         <MetaRow icon={<Building2 />} label="Department">
@@ -173,7 +204,14 @@ function DepartmentRow() {
 }
 
 function DueDateRow() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
+    if (!meta.canUpdate) {
+        return (
+            <MetaRow icon={<Calendar className="size-4" />} label="Due date">
+                <Paragraph.sm>{state.draft.dueDate ? formatRequestDate(state.draft.dueDate) : 'No due date'}</Paragraph.sm>
+            </MetaRow>
+        )
+    }
     return (
         <MetaRow icon={<Calendar className="size-4" />} label="Due date">
             <Input
@@ -221,7 +259,7 @@ function MetaFields() {
 // ─── 5Ws ─────────────────────────────────────────────────────────────
 
 function FiveW({ className }: { className?: string }) {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     return (
         <div className={cn(className)}>
             <Label.md className="block pb-3">5Ws and 1H</Label.md>
@@ -233,6 +271,7 @@ function FiveW({ className }: { className?: string }) {
                             value={state.draft[key] as string}
                             onChange={e => actions.updateField(key, e.target.value as Request[typeof key])}
                             placeholder={`${label}…`}
+                            disabled={!meta.canUpdate}
                             rows={2}
                         />
                     </div>
@@ -245,7 +284,7 @@ function FiveW({ className }: { className?: string }) {
 // ─── Notes ───────────────────────────────────────────────────────────
 
 function Notes({ className }: { className?: string }) {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     return (
         <div className={cn(className)}>
             <Label.md className="block pb-3">Notes</Label.md>
@@ -253,6 +292,7 @@ function Notes({ className }: { className?: string }) {
                 value={state.draft.notes ?? ''}
                 onChange={e => actions.updateField('notes', e.target.value as Request['notes'])}
                 placeholder="Internal notes…"
+                disabled={!meta.canUpdate}
                 rows={4}
             />
         </div>
@@ -262,7 +302,7 @@ function Notes({ className }: { className?: string }) {
 // ─── Action buttons ──────────────────────────────────────────────────
 
 function SaveButton() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     const { toast } = useFeedback()
 
     async function handleSave() {
@@ -274,7 +314,7 @@ function SaveButton() {
         }
     }
 
-    if (!state.isDirty) return null
+    if (!meta.canUpdate || !state.isDirty) return null
 
     return (
         <Button icon={<Save />} onClick={handleSave} disabled={state.isSaving}>
@@ -284,8 +324,8 @@ function SaveButton() {
 }
 
 function DiscardButton() {
-    const { state, actions } = useRequestEditor()
-    if (!state.isDirty) return null
+    const { state, actions, meta } = useRequestEditor()
+    if (!meta.canUpdate || !state.isDirty) return null
     return (
         <Button variant="secondary" icon={<Undo2 />} onClick={actions.discard} disabled={state.isSaving}>
             Discard
@@ -574,7 +614,7 @@ function AssigneeDialog({
 }
 
 function Assignees() {
-    const { state, actions } = useRequestEditor()
+    const { state, actions, meta } = useRequestEditor()
     const { toast } = useFeedback()
     const [dialogOpen, setDialogOpen] = useState(false)
     const { state: { members } } = useMembers()
@@ -613,13 +653,15 @@ function Assignees() {
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <Label.md>Assignees</Label.md>
-                <Button
-                    variant="secondary"
-                    icon={<UserPlus />}
-                    onClick={() => setDialogOpen(true)}
-                >
-                    Add
-                </Button>
+                {meta.canUpdate && (
+                    <Button
+                        variant="secondary"
+                        icon={<UserPlus />}
+                        onClick={() => setDialogOpen(true)}
+                    >
+                        Add
+                    </Button>
+                )}
             </div>
 
             {state.assignees.length > 0 ? (
@@ -635,12 +677,14 @@ function Assignees() {
                                     </span>
                                 )}
                             </div>
-                            <Button.Icon
-                                aria-label={`Remove ${a.name}`}
-                                icon={<X />}
-                                variant="ghost"
-                                onClick={() => handleRemove(a.userId)}
-                            />
+                            {meta.canUpdate && (
+                                <Button.Icon
+                                    aria-label={`Remove ${a.name}`}
+                                    icon={<X />}
+                                    variant="ghost"
+                                    onClick={() => handleRemove(a.userId)}
+                                />
+                            )}
                         </div>
                     ))}
                 </div>
@@ -661,7 +705,7 @@ function Assignees() {
 // ─── Danger zone ─────────────────────────────────────────────────────
 
 function DangerZone() {
-    const { state } = useRequestEditor()
+    const { state, meta } = useRequestEditor()
     const isArchived = state.draft.status === 'archived'
 
     return (
@@ -673,22 +717,32 @@ function DangerZone() {
                 </Paragraph.sm>
             </div>
 
-            <div className="space-y-2">
+            {!meta.canUpdate && !meta.canDelete && (
                 <Paragraph.sm className="text-tertiary">
-                    {isArchived
-                        ? 'Restoring puts the request back into the active queue with a status of Submitted, and it shows up in dashboards and kanban boards again.'
-                        : 'Archiving hides the request from active views (dashboard, department list, kanban) but keeps it, its comments, and its activity timeline intact. You can restore it any time.'}
+                    Your role doesn't allow archiving or deleting requests. Ask a workspace admin if you need this.
                 </Paragraph.sm>
-                <ArchiveButton />
-            </div>
+            )}
 
-            <div className="space-y-2">
-                <Paragraph.sm className="text-tertiary">
-                    Deleting permanently removes the request along with every comment, assignee, and activity-log entry.
-                    There is no undo. Use this only when the request shouldn't have been submitted in the first place.
-                </Paragraph.sm>
-                <DeleteButton />
-            </div>
+            {meta.canUpdate && (
+                <div className="space-y-2">
+                    <Paragraph.sm className="text-tertiary">
+                        {isArchived
+                            ? 'Restoring puts the request back into the active queue with a status of Submitted, and it shows up in dashboards and kanban boards again.'
+                            : 'Archiving hides the request from active views (dashboard, department list, kanban) but keeps it, its comments, and its activity timeline intact. You can restore it any time.'}
+                    </Paragraph.sm>
+                    <ArchiveButton />
+                </div>
+            )}
+
+            {meta.canDelete && (
+                <div className="space-y-2">
+                    <Paragraph.sm className="text-tertiary">
+                        Deleting permanently removes the request along with every comment, assignee, and activity-log entry.
+                        There is no undo. Use this only when the request shouldn't have been submitted in the first place.
+                    </Paragraph.sm>
+                    <DeleteButton />
+                </div>
+            )}
         </div>
     )
 }

@@ -9,6 +9,7 @@ import { Label } from '@/components/display/text'
 import { fetchRequestById } from '@/data/fetch-requests'
 import { fetchAssigneesForRequest } from '@/data/fetch-assignees'
 import { useRequests } from '@/features/requests/request-provider'
+import { usePermissions } from '@/features/auth/use-permissions'
 import { RequestEditor } from '@/features/requests/request-editor'
 import { RequestComments } from '@/features/requests/request-comments'
 import { RequestActivityTimeline } from '@/features/requests/request-activity-timeline'
@@ -27,6 +28,7 @@ const SECTIONS = [
 export function RequestDetailScreen() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
+    const { canUpdate, canDelete } = usePermissions()
     const { actions: { syncRequest, removeRequest } } = useRequests()
     const [initial, setInitial] = useState<Request | null>(null)
     const [notFound, setNotFound] = useState(false)
@@ -69,6 +71,10 @@ export function RequestDetailScreen() {
         return <Navigate to={`/${routes.dashboard}`} replace />
     }
 
+    // The Danger zone (archive / delete) is only reachable for roles that can
+    // act on it; hide the tab entirely for read-only members.
+    const sections = SECTIONS.filter(s => s.value !== 'danger' || canUpdate || canDelete)
+
     return (
         <RequestEditor.Root request={initial} assignees={assignees} onSync={syncRequest} onRemove={removeRequest}>
             <TopBarActions>
@@ -84,7 +90,7 @@ export function RequestDetailScreen() {
                 <Tabs.Root orientation="vertical" defaultTab="overview">
                     <div className="grid gap-10 md:grid-cols-[200px_1fr] items-start">
                         <Tabs.List className="md:sticky md:top-4">
-                            {SECTIONS.map(s => (
+                            {sections.map(s => (
                                 <Tabs.Tab key={s.value} value={s.value}>{s.label}</Tabs.Tab>
                             ))}
                         </Tabs.List>

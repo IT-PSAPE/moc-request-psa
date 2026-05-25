@@ -7,6 +7,7 @@ import { Indicator } from '@/components/display/indicator'
 import { Label } from '@/components/display/text'
 import { useFeedback } from '@/components/feedback/feedback-provider'
 import { badgeColor } from '@/lib/color-keys'
+import { usePermissions } from '@/features/auth/use-permissions'
 import { statusGroups, type StatusGroup } from '@/types/requests'
 import type { Request } from '@/types/requests'
 import { useRequests } from './request-provider'
@@ -17,10 +18,13 @@ import { RequestItemStack } from './request-item'
 
 function DraggableRequestItem({ request }: { request: Request }) {
     const [drawerOpen, setDrawerOpen] = useState(false)
+    const { canUpdate } = usePermissions()
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: request.id,
         data: { request },
-        disabled: drawerOpen,
+        // Dragging a card changes its status — a request UPDATE. Roles without
+        // can_update get a read-only board (cards still open the drawer).
+        disabled: drawerOpen || !canUpdate,
     })
 
     const style = {

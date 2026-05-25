@@ -93,6 +93,48 @@ as $$
   );
 $$;
 
+-- Per-role request capabilities. The workspace_roles flags can_create /
+-- can_update / can_delete decide what an active member is allowed to do to
+-- requests in a workspace. Combined with is_department_member they form the
+-- non-admin branch of the requests RLS policies (phase-05); a workspace admin
+-- bypasses these entirely. Each returns false when the caller has no active
+-- role in the workspace.
+create or replace function private.can_create_requests(target_workspace uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((
+    select can_create from private.current_workspace_role(target_workspace)
+  ), false);
+$$;
+
+create or replace function private.can_update_requests(target_workspace uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((
+    select can_update from private.current_workspace_role(target_workspace)
+  ), false);
+$$;
+
+create or replace function private.can_delete_requests(target_workspace uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce((
+    select can_delete from private.current_workspace_role(target_workspace)
+  ), false);
+$$;
+
 -- ───────────────────────────────────────────────────────────────────────────
 -- 2. Public utility functions + their triggers.
 -- ───────────────────────────────────────────────────────────────────────────

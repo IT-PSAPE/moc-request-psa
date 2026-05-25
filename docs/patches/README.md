@@ -21,3 +21,4 @@ database that's already current is a no-op.
 | Patch | Summary |
 | --- | --- |
 | `2026-05-21-grant-public-rpcs-to-authenticated.sql` | Grant `submit_public_request` and `lookup_request_by_tracking_id` to `authenticated` so signed-in users can use `/submit` and `/track`. |
+| `2026-05-21-enforce-role-permissions.sql` | Enforce the `workspace_roles` `can_create` / `can_update` / `can_delete` flags on requests (split `requests_modify` into per-operation policies). Without this a Viewer had the same write access as an Editor. |

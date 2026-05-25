@@ -32,13 +32,28 @@ export async function updateRequest(request: Request): Promise<Request> {
     if (prevError) throw new Error(prevError.message)
     if (!prev) throw new Error('Request not found')
 
+    // Only include columns granted to `authenticated` in phase-05; sending
+    // `submitted_by_user_id`, `source`, `updated_at`, etc. trips a column-
+    // privilege check (42501) for every caller — including admins, since
+    // column grants apply on top of RLS. `updated_at` is set by a trigger.
+    const row = requestToRow(request)
     const next: Partial<RequestRow> = {
-        ...requestToRow(request),
+        title: row.title,
+        category_id: row.category_id,
+        department_id: row.department_id,
+        priority: row.priority,
+        status: row.status,
+        due_date: row.due_date,
+        requested_by_name: row.requested_by_name,
+        requested_by_email: row.requested_by_email,
+        who: row.who,
+        what: row.what,
+        when_text: row.when_text,
+        where_text: row.where_text,
+        why: row.why,
+        how: row.how,
+        notes: row.notes,
     }
-    delete (next as Record<string, unknown>).id
-    delete (next as Record<string, unknown>).workspace_id
-    delete (next as Record<string, unknown>).tracking_id
-    delete (next as Record<string, unknown>).created_at
 
     const { data, error } = await supabase
         .from('requests')

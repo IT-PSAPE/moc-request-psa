@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import type { Request } from '@/types/requests'
 import { updateRequest } from '@/data/mutate-requests'
 import { getErrorMessage } from '@/utils/get-error-message'
@@ -52,11 +52,16 @@ export function useRequestStore(initialRequest: Request, options?: UseRequestSto
         [state.draft, state.original],
     )
 
+    // Only re-sync from the prop when the parent actually hands us a different
+    // request object (e.g. URL change). Keying off `isDirty` here would clobber
+    // the freshly-saved `state.original` the moment a save completes, since the
+    // parent's `initialRequest` is captured once and never refreshed.
+    const lastInitialRequestRef = useRef(initialRequest)
     useEffect(() => {
-        if (state.original.id !== initialRequest.id || !isDirty) {
-            dispatch({ type: 'RESET', request: initialRequest })
-        }
-    }, [initialRequest, isDirty, state.original.id])
+        if (lastInitialRequestRef.current === initialRequest) return
+        lastInitialRequestRef.current = initialRequest
+        dispatch({ type: 'RESET', request: initialRequest })
+    }, [initialRequest])
 
     const updateField = useCallback(<K extends keyof Request>(field: K, value: Request[K]) => {
         dispatch({ type: 'UPDATE_FIELD', field, value })
