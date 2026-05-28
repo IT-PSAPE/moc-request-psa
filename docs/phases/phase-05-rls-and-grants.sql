@@ -46,7 +46,10 @@ create policy profiles_self_update on public.profiles
 -- ───────────────────────────────────────────────────────────────────────────
 -- 3. workspaces
 -- Pending members need to see their workspace's name on the /pending screen,
--- so SELECT is allowed for any-status membership. WRITE is platform-admin only.
+-- so SELECT is allowed for any-status membership. INSERT/DELETE are
+-- platform-admin only; workspace admins may UPDATE their own workspace's
+-- name/description (slug stays platform-managed, scoped by the column grant
+-- in the grants section below).
 -- ───────────────────────────────────────────────────────────────────────────
 drop policy if exists workspaces_read on public.workspaces;
 create policy workspaces_read on public.workspaces
@@ -61,6 +64,11 @@ drop policy if exists workspaces_modify on public.workspaces;
 create policy workspaces_modify on public.workspaces
   for all using (private.is_platform_admin())
   with check (private.is_platform_admin());
+
+drop policy if exists workspaces_admin_update on public.workspaces;
+create policy workspaces_admin_update on public.workspaces
+  for update using (private.is_workspace_admin(id))
+  with check (private.is_workspace_admin(id));
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- 4. workspace_roles
@@ -386,6 +394,9 @@ begin
     execute 'grant execute on function public.complete_invitation() to authenticated';
   end if;
 end $$;
+
+revoke update on public.workspaces from authenticated;
+grant update (name, description) on public.workspaces to authenticated;
 
 revoke update on public.profiles from authenticated;
 grant update (name, surname, email) on public.profiles to authenticated;
